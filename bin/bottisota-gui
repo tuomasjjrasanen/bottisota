@@ -1,0 +1,251 @@
+#!/usr/bin/env python3
+
+import re
+import sys
+
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+
+import bottisota.bus
+
+class ZoomableGraphicsView(QGraphicsView):
+
+    ZOOM_FACTOR = 1.1
+
+    def __init__(self, *args):
+        QGraphicsView.__init__(self, *args)
+        self.setDragMode(QGraphicsView.RubberBandDrag)
+        self.__zoomLevel = 0
+
+    def wheelEvent(self, event):
+        if not event.modifiers() & Qt.ControlModifier:
+            QGraphicsView.wheelEvent(self, event)
+        else:
+            self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+
+            if event.angleDelta().y() > 8 and self.__zoomLevel < 10:
+                self.__zoomLevel += 1
+                self.scale(ZoomableGraphicsView.ZOOM_FACTOR,
+                           ZoomableGraphicsView.ZOOM_FACTOR)
+                event.accept()
+            elif event.angleDelta().y() < -8 and self.__zoomLevel > -10:
+                self.__zoomLevel -= 1
+                self.scale(1 / ZoomableGraphicsView.ZOOM_FACTOR,
+                           1 / ZoomableGraphicsView.ZOOM_FACTOR)
+                event.accept()
+
+    def fitAllInView(self):
+        if self.scene() is not None:
+            self.fitInView(self.scene().itemsBoundingRect(), Qt.KeepAspectRatio)
+
+class GraphicsBotItem(QGraphicsPolygonItem):
+
+    def __init__(self, color=Qt.red, parent=None):
+        polygon = QPolygonF([QPointF(-6.6, -5), QPointF(-6.6, 5), QPointF(13.4, 0)])
+        QGraphicsPolygonItem.__init__(self, polygon, parent)
+
+        self.__waypoints = []
+
+        self.setBrush(color)
+
+    def setTargetPos(self, x, y):
+        dx = (x - self.x()) / 9
+        dy = (y - self.y()) / 9
+
+        xs = [self.x() + i * dx for i in range(9)]
+        xs.append(x)
+
+        ys = [self.y() + i * dy for i in range(9)]
+        ys.append(y)
+
+        waypoints = list(zip(xs, ys))
+        waypoints.reverse()
+        self.__waypoints.extend(waypoints)
+
+    def advance(self, phase):
+        if phase == 0:
+            return
+
+        if self.__waypoints:
+            x, y = self.__waypoints.pop()
+            self.setPos(x, y)
+
+class ArenaWidget(QWidget):
+
+    def __init__(self, timer, *args):
+        QWidget.__init__(self, *args)
+
+        layout = QVBoxLayout(self)
+
+        self.__arenaGraphicsScene = QGraphicsScene(bottisota.X_MIN, bottisota.Y_MIN, bottisota.X_MAX, bottisota.Y_MAX, self)
+        self.__arenaRectItem = self.__arenaGraphicsScene.addRect(self.__arenaGraphicsScene.sceneRect(), QPen(Qt.NoPen), QBrush(Qt.gray))
+        self.__arenaGraphicsView = ZoomableGraphicsView(self)
+        self.__arenaGraphicsView.setScene(self.__arenaGraphicsScene)
+        self.__arenaGraphicsView.setRenderHints(QPainter.Antialiasing)
+
+        timer.timeout.connect(self.__arenaGraphicsScene.advance)
+
+        layout.addWidget(self.__arenaGraphicsView)
+
+    def addBot(self, x, y, heading):
+        bot = GraphicsBotItem(Qt.red)
+        bot.setParentItem(self.__arenaRectItem)
+        bot.setPos(x, y)
+        bot.setRotation(heading)
+
+        return bot
+
+    def removeBot(self, bot):
+        self.__arenaGraphicsScene.removeItem(bot)
+
+class StatusWidget(QWidget):
+
+    def __init__(self, *args):
+        QWidget.__init__(self, *args)
+
+        layout = QVBoxLayout(self)
+
+        header_labels = ["Bot", "X", "Y", "Speed", "Heading"]
+
+        self.__tableWidget = QTableWidget(0, len(header_labels), self)
+        self.__tableWidget.verticalHeader().setVisible(False)
+
+        self.__tableWidget.setHorizontalHeaderLabels(header_labels)
+
+        layout.addWidget(self.__tableWidget)
+
+
+class MainWindow(QMainWindow):
+
+    def __init__(self):
+        QMainWindow.__init__(self)
+
+        self.__process = None
+
+        self.setWindowTitle("Bottisota")
+
+        self.__timer = QTimer(self)
+        self.__timer.setTimerType(Qt.PreciseTimer)
+
+        self.__arenaWidget = ArenaWidget(self.__timer, self)
+        self.__arenaWidget.setEnabled(False)
+
+        self.__statusWidget = StatusWidget(self)
+        self.__statusWidget.setEnabled(False)
+
+        self.setCentralWidget(self.__arenaWidget)
+
+        self.__statusDockWidget = QDockWidget(self)
+        self.__statusDockWidget.setWidget(self.__statusWidget)
+        self.__statusDockWidget.setWindowTitle("Status")
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.__statusDockWidget)
+
+        self.__beginGameAction = QAction(self)
+        self.__beginGameAction.setText("&Begin")
+        self.__beginGameAction.setShortcut(QKeySequence("F2"))
+        self.__beginGameAction.triggered.connect(self.__beginGame)
+
+        self.__endGameAction = QAction(self)
+        self.__endGameAction.setText("&End")
+        self.__endGameAction.setShortcut(QKeySequence("F3"))
+        self.__endGameAction.setEnabled(False)
+        self.__endGameAction.triggered.connect(self.__endGame)
+
+        self.__quitAction = QAction(self)
+        self.__quitAction.setText("&Quit")
+        self.__quitAction.setShortcut(QKeySequence("Ctrl+Q"))
+        self.__quitAction.triggered.connect(self.close)
+
+        menuBar = QMenuBar()
+
+        fileMenu = menuBar.addMenu("&File")
+        fileMenu.addAction(self.__quitAction)
+
+        serverMenu = menuBar.addMenu("&Game")
+        serverMenu.addAction(self.__beginGameAction)
+        serverMenu.addAction(self.__endGameAction)
+
+        self.setMenuBar(menuBar)
+
+        self.__bots = {}
+
+    def __beginGame(self):
+        while self.__bots:
+            botid, bot = self.__bots.popitem()
+            self.__arenaWidget.removeBot(bot)
+
+        self.__process = QProcess(self)
+        self.__process.started.connect(self.__gameBegun)
+        self.__process.finished.connect(self.__gameEnded)
+        self.__process.setProcessChannelMode(QProcess.ForwardedErrorChannel)
+        self.__process.readyReadStandardOutput.connect(self.__gameLogReady)
+
+        self.__process.start("bottisota-server", QIODevice.ReadOnly)
+
+    def __endGame(self):
+        self.__process.terminate()
+
+    def __gameBegun(self):
+        self.__beginGameAction.setEnabled(False)
+        self.__endGameAction.setEnabled(True)
+        self.__arenaWidget.setEnabled(True)
+        self.__statusWidget.setEnabled(True)
+
+    def __gameEnded(self):
+        self.__process = None
+        self.__beginGameAction.setEnabled(True)
+        self.__endGameAction.setEnabled(False)
+        self.__arenaWidget.setEnabled(False)
+        self.__statusWidget.setEnabled(False)
+
+    def __gameLogReady(self):
+        if not self.__process.canReadLine():
+            return
+
+        log_entry = self.__process.readLine().data().decode("utf-8").strip()
+
+        match = re.match(r'^bot (.+) summoned to (\d+), (\d+), heading at (\d+)$', log_entry)
+        if match:
+            botid, x, y, heading = match.groups()
+            x = int(x)
+            y = int(y)
+            heading = int(heading)
+            self.__bots[botid] = self.__arenaWidget.addBot(x, y, heading)
+            return
+
+        match = re.match(r'^bot (.+) moved to (\d+), (\d+), heading at (\d+)$', log_entry)
+        if match:
+            botid, x, y, heading = match.groups()
+            x = int(x)
+            y = int(y)
+            heading = int(heading)
+            bot = self.__bots[botid]
+            bot.setTargetPos(x, y)
+            bot.setRotation(heading)
+            return
+
+        if re.match(r'^begin$', log_entry):
+            self.__timer.start(50)
+            return
+
+        if re.match(r'^end$', log_entry):
+            self.__timer.stop()
+            return
+
+    def closeEvent(self, event):
+        if self.__process is not None:
+            self.__process.close()
+            self.__process = None
+
+
+def main():
+    app = QApplication(sys.argv)
+
+    win = MainWindow()
+    win.show()
+
+    return app.exec_()
+
+if __name__ == "__main__":
+    sys.exit(main())

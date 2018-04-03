@@ -1,0 +1,20 @@
+HEADING_MAX = 359
+HEADING_MIN = 0
+
+SPEED_MAX = 20
+SPEED_MIN = 0
+
+TICK_MILLIS = 500
+
+X_MAX = 500
+X_MIN = 0
+
+Y_MAX = 500
+Y_MIN = 0
+
+CORNERS = (
+    (X_MIN, Y_MIN),
+    (X_MAX, Y_MIN),
+    (X_MAX, Y_MAX),
+    (X_MIN, Y_MAX),
+)

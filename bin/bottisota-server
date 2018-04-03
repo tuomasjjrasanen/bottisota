@@ -1,0 +1,283 @@
+#!/usr/bin/env python3
+
+import errno
+import itertools
+import logging
+import logging.handlers
+import math
+import os
+import random
+import signal
+import socket
+import sys
+import time
+
+import bottisota
+import bottisota.bus
+import bottisota.protocol
+
+logger = logging.getLogger("bottisota")
+logger.setLevel(logging.INFO)
+
+logger.addHandler(logging.StreamHandler(sys.stderr))
+logger.handlers[0].setFormatter(logging.Formatter("%(levelname)s|%(name)s|%(asctime)s|%(message)s"))
+
+game_logger = logging.getLogger("bottisota.game")
+game_logger.addHandler(logging.StreamHandler(sys.stdout))
+
+def randpos():
+    x = random.randint(bottisota.X_MIN, bottisota.X_MAX)
+    y = random.randint(bottisota.Y_MIN, bottisota.Y_MAX)
+    heading = random.randint(bottisota.HEADING_MIN, bottisota.HEADING_MAX)
+
+    return x, y, heading
+
+class Clock:
+
+    def __init__(self):
+        self.__ticks = 0
+
+    def tick(self):
+        self.__ticks += 1
+        game_logger.info("tick %d", self.__ticks)
+        time.sleep(bottisota.TICK_MILLIS / 1000)
+
+    def now(self):
+        return self.__ticks
+
+CLOCK = Clock()
+
+class Bot:
+
+    def __init__(self, sock, idnum, x, y, heading):
+        self.__conn = bottisota.bus.ServerConnection(sock)
+        self.__syscall = None
+        self.__ticks_since_last_update = 1
+        self.__drv_status = bottisota.protocol.DRV_STATUS_OK
+
+        self.__idnum = idnum
+        self.__x = x
+        self.__y = y
+        self.__heading = heading
+        self.__speed = bottisota.SPEED_MIN
+
+    @property
+    def idnum(self):
+        return self.__idnum
+
+    @property
+    def x(self):
+        return self.__x
+
+    @property
+    def y(self):
+        return self.__y
+
+    @property
+    def heading(self):
+        return self.__heading
+
+    @property
+    def speed(self):
+        return self.__speed
+
+    def shutdown(self):
+        self.__conn.disconnect()
+
+    def read_syscall(self):
+        self.__syscall = self.__conn.recv(False)
+
+    def evaluate_syscall(self):
+        if self.__syscall[0] == bottisota.protocol.SYSCALL_POS_FUN:
+            pass
+        elif self.__syscall[0] == bottisota.protocol.SYSCALL_CLK_FUN:
+            pass
+        elif self.__syscall[0] == bottisota.protocol.SYSCALL_DRV_FUN:
+            speed, heading = self.__syscall[1]
+            if speed > bottisota.SPEED_MAX or heading > bottisota.HEADING_MAX:
+                self.__drv_status = bottisota.protocol.DRV_STATUS_BADARG
+            else:
+                self.__drv_status = bottisota.protocol.DRV_STATUS_OK
+                self.__speed = speed
+                self.__heading = heading
+        else:
+            raise RuntimeError("unexpected syscall '%s'" % self.__syscall[0])
+
+    def return_syscall(self):
+        if self.__syscall[0] == bottisota.protocol.SYSCALL_POS_FUN:
+            return_values = (self.__x, self.__y, self.__speed, self.__heading)
+        elif self.__syscall[0] == bottisota.protocol.SYSCALL_CLK_FUN:
+            return_values = (CLOCK.now(),)
+        elif self.__syscall[0] == bottisota.protocol.SYSCALL_DRV_FUN:
+            return_values = (self.__drv_status,)
+        else:
+            raise RuntimeError("unexpected syscall '%s'" % self.__syscall[0])
+
+        self.__conn.send(self.__syscall[0].replace("?", "="), *return_values)
+
+    def update_position(self):
+        distance = self.__speed * self.__ticks_since_last_update
+        heading_rad = math.radians(self.__heading)
+        dy = int(round(math.sin(heading_rad) * distance))
+        dx = int(round(math.cos(heading_rad) * distance))
+        if dx or dy:
+            new_x, new_y = (self.__x + dx, self.__y + dy)
+            if new_x < bottisota.X_MIN or new_x > bottisota.X_MAX or new_y < bottisota.Y_MIN or new_y > bottisota.Y_MAX:
+                new_x = min(max(new_x, bottisota.X_MIN), bottisota.X_MAX)
+                new_y = min(max(new_y, bottisota.Y_MIN), bottisota.Y_MAX)
+                self.__speed = bottisota.SPEED_MIN
+            self.__x = new_x
+            self.__y = new_y
+            game_logger.info("bot %d moved to %d, %d, heading at %d", self.__idnum, self.__x, self.__y, self.__heading)
+
+class Game:
+
+    def __init__(self):
+        self.__bots = []
+        self.__is_on = True
+
+    def wait_for_bot(self, srvsock):
+        botsock = srvsock.accept()[0]
+        idnum = len(self.__bots) + 1
+
+        logger.info("connection %d established", idnum)
+
+        x, y, heading = randpos()
+        while (x, y) in [(b.x, b.y) for b in self.__bots]:
+            x, y, heading = randpos()
+
+        bot = Bot(botsock, idnum, x, y, heading)
+        self.__bots.append(bot)
+        game_logger.info("bot %d summoned to %d, %d, heading at %d", idnum, x, y, heading)
+
+    def stop(self, signum, stack_frame):
+        self.__is_on = False
+
+    def play(self):
+        initial_bot_count = len(self.__bots)
+        game_logger.info("begin")
+        try:
+            while len(self.__bots) == initial_bot_count and self.__is_on:
+                CLOCK.tick()
+                self.__read_syscalls()
+                self.__evaluate_syscalls()
+                self.__update()
+                self.__return_syscalls()
+
+        finally:
+            game_logger.info("end")
+            first_error = sys.exc_info()[1]
+            while self.__bots:
+                bot = self.__bots.pop()
+                try:
+                    bot.shutdown()
+                except Exception as e:
+                    first_error = first_error or e
+                    continue
+
+            if first_error:
+                raise first_error
+
+    def __evaluate_syscalls(self):
+        for bot in self.__bots:
+            bot.evaluate_syscall()
+
+    def __update_positions(self):
+        # TODO: dynamic collision detection
+        for bot in self.__bots:
+            bot.update_position()
+
+    def __update(self):
+        self.__update_positions()
+
+    def __read_syscalls(self):
+        failed_bots = []
+
+        for bot in self.__bots:
+            try:
+                bot.read_syscall()
+            except:
+                logger.exception("failed to read a syscall from a bot")
+                failed_bots.append(bot)
+
+        for failed_bot in failed_bots:
+            self.__bots.remove(failed_bot)
+            try:
+                failed_bot.shutdown()
+            except:
+                logger.exception("failed to shutdown a failed bot")
+                continue
+
+    def __return_syscalls(self):
+        for bot in self.__bots:
+            bot.return_syscall()
+
+class Server:
+
+    def __init__(self, address=bottisota.bus.ADDRESS):
+        self.__address = address
+        self.__sock = None
+        self.__monitor_sock = None
+
+    def __enter__(self):
+        sock = socket.socket(socket.AF_UNIX)
+
+        try:
+            os.remove(self.__address)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
+
+        try:
+            sock.bind(self.__address)
+            sock.listen(2)
+        except:
+            sock.close()
+            os.remove(self.__address)
+            raise
+
+        self.__sock = sock
+        return self
+
+    def __exit__(self, *args):
+        sock = self.__sock
+        self.__sock = None
+
+        first_error = None
+
+        try:
+            os.remove(sock.getsockname())
+        except Exception as e:
+            first_error = first_error or e
+
+        try:
+            sock.close()
+        except Exception as e:
+            first_error = first_error or e
+
+        if first_error:
+            raise first_error
+
+    def serve(self):
+        game = Game()
+
+        game_logger.info("init")
+
+        game.wait_for_bot(self.__sock)
+        game.wait_for_bot(self.__sock)
+
+        signal.signal(signal.SIGUSR1, game.stop)
+        signal.signal(signal.SIGUSR2, game.stop)
+        signal.signal(signal.SIGALRM, game.stop)
+        signal.signal(signal.SIGHUP, game.stop)
+        signal.signal(signal.SIGINT, game.stop)
+        signal.signal(signal.SIGTERM, game.stop)
+
+        game.play()
+
+def main():
+    with Server() as server:
+        server.serve()
+
+if __name__ == "__main__":
+    main()
