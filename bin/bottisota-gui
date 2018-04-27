@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import os
 import re
+import signal
 import sys
 
 from PyQt5.QtCore import *
@@ -146,9 +148,21 @@ class MainWindow(QMainWindow):
         self.__beginGameAction.setShortcut(QKeySequence("F2"))
         self.__beginGameAction.triggered.connect(self.__beginGame)
 
+        self.__pauseGameAction = QAction(self)
+        self.__pauseGameAction.setText("&Pause")
+        self.__pauseGameAction.setShortcut(QKeySequence("F3"))
+        self.__pauseGameAction.setEnabled(False)
+        self.__pauseGameAction.triggered.connect(self.__pauseGame)
+
+        self.__continueGameAction = QAction(self)
+        self.__continueGameAction.setText("&Continue")
+        self.__continueGameAction.setShortcut(QKeySequence("F4"))
+        self.__continueGameAction.setEnabled(False)
+        self.__continueGameAction.triggered.connect(self.__continueGame)
+
         self.__endGameAction = QAction(self)
         self.__endGameAction.setText("&End")
-        self.__endGameAction.setShortcut(QKeySequence("F3"))
+        self.__endGameAction.setShortcut(QKeySequence("F5"))
         self.__endGameAction.setEnabled(False)
         self.__endGameAction.triggered.connect(self.__endGame)
 
@@ -164,6 +178,8 @@ class MainWindow(QMainWindow):
 
         serverMenu = menuBar.addMenu("&Game")
         serverMenu.addAction(self.__beginGameAction)
+        serverMenu.addAction(self.__pauseGameAction)
+        serverMenu.addAction(self.__continueGameAction)
         serverMenu.addAction(self.__endGameAction)
 
         self.setMenuBar(menuBar)
@@ -183,12 +199,26 @@ class MainWindow(QMainWindow):
 
         self.__process.start("bottisota-server", QIODevice.ReadOnly)
 
+    def __pauseGame(self):
+        os.kill(self.__process.processId(), signal.SIGSTOP)
+        self.__continueGameAction.setEnabled(True)
+        self.__pauseGameAction.setEnabled(False)
+        self.__endGameAction.setEnabled(False)
+
+    def __continueGame(self):
+        os.kill(self.__process.processId(), signal.SIGCONT)
+        self.__continueGameAction.setEnabled(False)
+        self.__pauseGameAction.setEnabled(True)
+        self.__endGameAction.setEnabled(True)
+
     def __endGame(self):
         self.__process.terminate()
 
     def __gameBegun(self):
         self.__beginGameAction.setEnabled(False)
         self.__endGameAction.setEnabled(True)
+        self.__pauseGameAction.setEnabled(True)
+        self.__continueGameAction.setEnabled(False)
         self.__arenaWidget.setEnabled(True)
         self.__statusWidget.setEnabled(True)
 
@@ -196,6 +226,8 @@ class MainWindow(QMainWindow):
         self.__process = None
         self.__beginGameAction.setEnabled(True)
         self.__endGameAction.setEnabled(False)
+        self.__pauseGameAction.setEnabled(False)
+        self.__continueGameAction.setEnabled(False)
         self.__arenaWidget.setEnabled(False)
         self.__statusWidget.setEnabled(False)
 
