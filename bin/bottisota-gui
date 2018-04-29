@@ -117,13 +117,62 @@ class StatusWidget(QWidget):
 
         layout.addWidget(self.__tableWidget)
 
+class BeginDialog(QDialog):
+
+    def __init__(self, *args):
+        QDialog.__init__(self, *args)
+
+        self.setModal(True)
+
+        self.setWindowTitle("Begin game")
+
+        layout = QVBoxLayout(self)
+
+        formLayout = QFormLayout()
+
+        self.__blueAIComboBox = QComboBox()
+        self.__redAIComboBox = QComboBox()
+
+        ai_programs = [f for f in os.listdir(os.path.dirname(sys.argv[0])) if f.startswith("bottisota-bot-ai-")]
+
+        for ai_program in ai_programs:
+            self.__blueAIComboBox.addItem(ai_program)
+            self.__redAIComboBox.addItem(ai_program)
+
+        formLayout.addRow("Blue AI program", self.__blueAIComboBox)
+        formLayout.addRow("Red AI program", self.__redAIComboBox)
+
+        layout.addLayout(formLayout)
+
+        buttonRowLayout = QHBoxLayout()
+        buttonRowLayout.addStretch()
+
+        cancelButton = QPushButton("&Cancel")
+        cancelButton.clicked.connect(self.reject)
+
+        okButton = QPushButton("&Ok")
+        okButton.setEnabled(len(ai_programs) > 0)
+        okButton.clicked.connect(self.accept)
+
+        buttonRowLayout.addWidget(cancelButton)
+        buttonRowLayout.addWidget(okButton)
+
+        layout.addLayout(buttonRowLayout)
+
+    @property
+    def blueAIProgram(self):
+        return self.__blueAIComboBox.currentText()
+
+    @property
+    def redAIProgram(self):
+        return self.__redAIComboBox.currentText()
 
 class MainWindow(QMainWindow):
 
     def __init__(self):
         QMainWindow.__init__(self)
 
-        self.__process = None
+        self.__serverProcess = None
 
         self.setWindowTitle("Bottisota")
 
@@ -144,7 +193,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.BottomDockWidgetArea, self.__statusDockWidget)
 
         self.__beginGameAction = QAction(self)
-        self.__beginGameAction.setText("&Begin")
+        self.__beginGameAction.setText("&Begin...")
         self.__beginGameAction.setShortcut(QKeySequence("F2"))
         self.__beginGameAction.triggered.connect(self.__beginGame)
 
@@ -191,30 +240,40 @@ class MainWindow(QMainWindow):
             botid, bot = self.__bots.popitem()
             self.__arenaWidget.removeBot(bot)
 
-        self.__process = QProcess(self)
-        self.__process.started.connect(self.__gameBegun)
-        self.__process.finished.connect(self.__gameEnded)
-        self.__process.setProcessChannelMode(QProcess.ForwardedErrorChannel)
-        self.__process.readyReadStandardOutput.connect(self.__gameLogReady)
+        self.__serverProcess = QProcess(self)
+        self.__serverProcess.started.connect(self.__gameBegun)
+        self.__serverProcess.finished.connect(self.__gameEnded)
+        self.__serverProcess.setProcessChannelMode(QProcess.ForwardedErrorChannel)
+        self.__serverProcess.readyReadStandardOutput.connect(self.__gameLogReady)
 
-        self.__process.start("bottisota-server", QIODevice.ReadOnly)
+        self.__serverProcess.start("bottisota-server", QIODevice.ReadOnly)
 
     def __pauseGame(self):
-        os.kill(self.__process.processId(), signal.SIGSTOP)
+        os.kill(self.__serverProcess.processId(), signal.SIGSTOP)
         self.__continueGameAction.setEnabled(True)
         self.__pauseGameAction.setEnabled(False)
         self.__endGameAction.setEnabled(False)
 
     def __continueGame(self):
-        os.kill(self.__process.processId(), signal.SIGCONT)
+        os.kill(self.__serverProcess.processId(), signal.SIGCONT)
         self.__continueGameAction.setEnabled(False)
         self.__pauseGameAction.setEnabled(True)
         self.__endGameAction.setEnabled(True)
 
     def __endGame(self):
-        self.__process.terminate()
+        self.__serverProcess.terminate()
 
     def __gameBegun(self):
+        beginDialog = BeginDialog(self)
+        if not beginDialog.exec():
+            self.__serverProcess.terminate()
+            return
+
+        blueAIProcess = QProcess(self)
+        blueAIProcess.start(beginDialog.blueAIProgram)
+        redAIProcess = QProcess(self)
+        redAIProcess.start(beginDialog.redAIProgram)
+
         self.__beginGameAction.setEnabled(False)
         self.__endGameAction.setEnabled(True)
         self.__pauseGameAction.setEnabled(True)
@@ -223,7 +282,7 @@ class MainWindow(QMainWindow):
         self.__statusWidget.setEnabled(True)
 
     def __gameEnded(self):
-        self.__process = None
+        self.__serverProcess = None
         self.__beginGameAction.setEnabled(True)
         self.__endGameAction.setEnabled(False)
         self.__pauseGameAction.setEnabled(False)
@@ -232,10 +291,10 @@ class MainWindow(QMainWindow):
         self.__statusWidget.setEnabled(False)
 
     def __gameLogReady(self):
-        if not self.__process.canReadLine():
+        if not self.__serverProcess.canReadLine():
             return
 
-        log_entry = self.__process.readLine().data().decode("utf-8").strip()
+        log_entry = self.__serverProcess.readLine().data().decode("utf-8").strip()
 
         match = re.match(r'^bot (.+) summoned to (\d+), (\d+), heading at (\d+)$', log_entry)
         if match:
@@ -266,9 +325,9 @@ class MainWindow(QMainWindow):
             return
 
     def closeEvent(self, event):
-        if self.__process is not None:
-            self.__process.close()
-            self.__process = None
+        if self.__serverProcess is not None:
+            self.__serverProcess.close()
+            self.__serverProcess = None
 
 
 def main():
