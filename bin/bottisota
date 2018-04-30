@@ -90,8 +90,8 @@ class ArenaWidget(QWidget):
 
         layout.addWidget(self.__arenaGraphicsView)
 
-    def addBot(self, x, y, heading):
-        bot = GraphicsBotItem(Qt.red)
+    def addBot(self, x, y, heading, color):
+        bot = GraphicsBotItem(color)
         bot.setParentItem(self.__arenaRectItem)
         bot.setPos(x, y)
         bot.setRotation(heading)
@@ -173,6 +173,8 @@ class MainWindow(QMainWindow):
         QMainWindow.__init__(self)
 
         self.__arenaProcess = None
+        self.__blueAIProcess = None
+        self.__redAIProcess = None
 
         self.setWindowTitle("Bottisota")
 
@@ -269,10 +271,12 @@ class MainWindow(QMainWindow):
             self.__arenaProcess.terminate()
             return
 
-        blueAIProcess = QProcess(self)
-        blueAIProcess.start(beginDialog.blueAIProgram)
-        redAIProcess = QProcess(self)
-        redAIProcess.start(beginDialog.redAIProgram)
+        self.__blueAIProcess = QProcess(self)
+        self.__blueAIProcess.setProgram(beginDialog.blueAIProgram)
+        self.__redAIProcess = QProcess(self)
+        self.__redAIProcess.setProgram(beginDialog.redAIProgram)
+
+        self.__blueAIProcess.start()
 
         self.__beginBattleAction.setEnabled(False)
         self.__endBattleAction.setEnabled(True)
@@ -298,11 +302,14 @@ class MainWindow(QMainWindow):
 
         match = re.match(r'^bot (.+) summoned to (\d+), (\d+), heading at (\d+)$', log_entry)
         if match:
+            if not self.__bots:
+                self.__redAIProcess.start()
             botid, x, y, heading = match.groups()
             x = int(x)
             y = int(y)
             heading = int(heading)
-            self.__bots[botid] = self.__arenaWidget.addBot(x, y, heading)
+            color = [Qt.blue, Qt.red][len(self.__bots)]
+            self.__bots[botid] = self.__arenaWidget.addBot(x, y, heading, color)
             return
 
         match = re.match(r'^bot (.+) moved to (\d+), (\d+), heading at (\d+)$', log_entry)
