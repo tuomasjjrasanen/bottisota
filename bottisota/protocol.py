@@ -10,7 +10,7 @@ SYSCALL_POS_RET = "POS="
 DRV_STATUS_OK = 0
 DRV_STATUS_BADARG = 1
 
-_CALLER_SRV = "SRV"
+_CALLER_ARENA = "ARENA"
 _CALLER_BOT = "BOT"
 
 _SYSCALL_ARG_FORMATS = {
@@ -39,11 +39,11 @@ class _Stack:
 
         grammar = (
             ("INIT", (_CALLER_BOT, SYSCALL_CLK_FUN), "WAIT"),
-            ("WAIT", (_CALLER_SRV, SYSCALL_CLK_RET), "OPER"),
+            ("WAIT", (_CALLER_ARENA, SYSCALL_CLK_RET), "OPER"),
             ("OPER", (_CALLER_BOT, SYSCALL_DRV_FUN), "DRIV"),
-            ("DRIV", (_CALLER_SRV, SYSCALL_DRV_RET), "OPER"),
+            ("DRIV", (_CALLER_ARENA, SYSCALL_DRV_RET), "OPER"),
             ("OPER", (_CALLER_BOT, SYSCALL_POS_FUN), "POSI"),
-            ("POSI", (_CALLER_SRV, SYSCALL_POS_RET), "OPER"),
+            ("POSI", (_CALLER_ARENA, SYSCALL_POS_RET), "OPER"),
             ("OPER", (_CALLER_BOT, SYSCALL_CLK_FUN), "WAIT"),
         )
 
@@ -66,9 +66,9 @@ class _Stack:
 class BotStack(_Stack):
 
     def __init__(self):
-        _Stack.__init__(self, _CALLER_BOT, _CALLER_SRV)
+        _Stack.__init__(self, _CALLER_BOT, _CALLER_ARENA)
 
-class SrvStack(_Stack):
+class ArenaStack(_Stack):
 
     def __init__(self):
-        _Stack.__init__(self, _CALLER_SRV, _CALLER_BOT)
+        _Stack.__init__(self, _CALLER_ARENA, _CALLER_BOT)

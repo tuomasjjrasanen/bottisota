@@ -124,7 +124,7 @@ class BeginDialog(QDialog):
 
         self.setModal(True)
 
-        self.setWindowTitle("Begin game")
+        self.setWindowTitle("Begin battle")
 
         layout = QVBoxLayout(self)
 
@@ -172,7 +172,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
 
-        self.__serverProcess = None
+        self.__arenaProcess = None
 
         self.setWindowTitle("Bottisota")
 
@@ -192,28 +192,28 @@ class MainWindow(QMainWindow):
         self.__statusDockWidget.setWindowTitle("Status")
         self.addDockWidget(Qt.BottomDockWidgetArea, self.__statusDockWidget)
 
-        self.__beginGameAction = QAction(self)
-        self.__beginGameAction.setText("&Begin...")
-        self.__beginGameAction.setShortcut(QKeySequence("F2"))
-        self.__beginGameAction.triggered.connect(self.__beginGame)
+        self.__beginBattleAction = QAction(self)
+        self.__beginBattleAction.setText("&Begin...")
+        self.__beginBattleAction.setShortcut(QKeySequence("F2"))
+        self.__beginBattleAction.triggered.connect(self.__beginBattle)
 
-        self.__pauseGameAction = QAction(self)
-        self.__pauseGameAction.setText("&Pause")
-        self.__pauseGameAction.setShortcut(QKeySequence("F3"))
-        self.__pauseGameAction.setEnabled(False)
-        self.__pauseGameAction.triggered.connect(self.__pauseGame)
+        self.__pauseBattleAction = QAction(self)
+        self.__pauseBattleAction.setText("&Pause")
+        self.__pauseBattleAction.setShortcut(QKeySequence("F3"))
+        self.__pauseBattleAction.setEnabled(False)
+        self.__pauseBattleAction.triggered.connect(self.__pauseBattle)
 
-        self.__continueGameAction = QAction(self)
-        self.__continueGameAction.setText("&Continue")
-        self.__continueGameAction.setShortcut(QKeySequence("F4"))
-        self.__continueGameAction.setEnabled(False)
-        self.__continueGameAction.triggered.connect(self.__continueGame)
+        self.__continueBattleAction = QAction(self)
+        self.__continueBattleAction.setText("&Continue")
+        self.__continueBattleAction.setShortcut(QKeySequence("F4"))
+        self.__continueBattleAction.setEnabled(False)
+        self.__continueBattleAction.triggered.connect(self.__continueBattle)
 
-        self.__endGameAction = QAction(self)
-        self.__endGameAction.setText("&End")
-        self.__endGameAction.setShortcut(QKeySequence("F5"))
-        self.__endGameAction.setEnabled(False)
-        self.__endGameAction.triggered.connect(self.__endGame)
+        self.__endBattleAction = QAction(self)
+        self.__endBattleAction.setText("&End")
+        self.__endBattleAction.setShortcut(QKeySequence("F5"))
+        self.__endBattleAction.setEnabled(False)
+        self.__endBattleAction.triggered.connect(self.__endBattle)
 
         self.__quitAction = QAction(self)
         self.__quitAction.setText("&Quit")
@@ -225,48 +225,48 @@ class MainWindow(QMainWindow):
         fileMenu = menuBar.addMenu("&File")
         fileMenu.addAction(self.__quitAction)
 
-        serverMenu = menuBar.addMenu("&Game")
-        serverMenu.addAction(self.__beginGameAction)
-        serverMenu.addAction(self.__pauseGameAction)
-        serverMenu.addAction(self.__continueGameAction)
-        serverMenu.addAction(self.__endGameAction)
+        battleMenu = menuBar.addMenu("&Battle")
+        battleMenu.addAction(self.__beginBattleAction)
+        battleMenu.addAction(self.__pauseBattleAction)
+        battleMenu.addAction(self.__continueBattleAction)
+        battleMenu.addAction(self.__endBattleAction)
 
         self.setMenuBar(menuBar)
 
         self.__bots = {}
 
-    def __beginGame(self):
+    def __beginBattle(self):
         while self.__bots:
             botid, bot = self.__bots.popitem()
             self.__arenaWidget.removeBot(bot)
 
-        self.__serverProcess = QProcess(self)
-        self.__serverProcess.started.connect(self.__gameBegun)
-        self.__serverProcess.finished.connect(self.__gameEnded)
-        self.__serverProcess.setProcessChannelMode(QProcess.ForwardedErrorChannel)
-        self.__serverProcess.readyReadStandardOutput.connect(self.__gameLogReady)
+        self.__arenaProcess = QProcess(self)
+        self.__arenaProcess.started.connect(self.__battleBegun)
+        self.__arenaProcess.finished.connect(self.__battleEnded)
+        self.__arenaProcess.setProcessChannelMode(QProcess.ForwardedErrorChannel)
+        self.__arenaProcess.readyReadStandardOutput.connect(self.__battleLogReady)
 
-        self.__serverProcess.start("bottisota-server", QIODevice.ReadOnly)
+        self.__arenaProcess.start("bottisota-arena-square-500", QIODevice.ReadOnly)
 
-    def __pauseGame(self):
-        os.kill(self.__serverProcess.processId(), signal.SIGSTOP)
-        self.__continueGameAction.setEnabled(True)
-        self.__pauseGameAction.setEnabled(False)
-        self.__endGameAction.setEnabled(False)
+    def __pauseBattle(self):
+        os.kill(self.__arenaProcess.processId(), signal.SIGSTOP)
+        self.__continueBattleAction.setEnabled(True)
+        self.__pauseBattleAction.setEnabled(False)
+        self.__endBattleAction.setEnabled(False)
 
-    def __continueGame(self):
-        os.kill(self.__serverProcess.processId(), signal.SIGCONT)
-        self.__continueGameAction.setEnabled(False)
-        self.__pauseGameAction.setEnabled(True)
-        self.__endGameAction.setEnabled(True)
+    def __continueBattle(self):
+        os.kill(self.__arenaProcess.processId(), signal.SIGCONT)
+        self.__continueBattleAction.setEnabled(False)
+        self.__pauseBattleAction.setEnabled(True)
+        self.__endBattleAction.setEnabled(True)
 
-    def __endGame(self):
-        self.__serverProcess.terminate()
+    def __endBattle(self):
+        self.__arenaProcess.terminate()
 
-    def __gameBegun(self):
+    def __battleBegun(self):
         beginDialog = BeginDialog(self)
         if not beginDialog.exec():
-            self.__serverProcess.terminate()
+            self.__arenaProcess.terminate()
             return
 
         blueAIProcess = QProcess(self)
@@ -274,27 +274,27 @@ class MainWindow(QMainWindow):
         redAIProcess = QProcess(self)
         redAIProcess.start(beginDialog.redAIProgram)
 
-        self.__beginGameAction.setEnabled(False)
-        self.__endGameAction.setEnabled(True)
-        self.__pauseGameAction.setEnabled(True)
-        self.__continueGameAction.setEnabled(False)
+        self.__beginBattleAction.setEnabled(False)
+        self.__endBattleAction.setEnabled(True)
+        self.__pauseBattleAction.setEnabled(True)
+        self.__continueBattleAction.setEnabled(False)
         self.__arenaWidget.setEnabled(True)
         self.__statusWidget.setEnabled(True)
 
-    def __gameEnded(self):
-        self.__serverProcess = None
-        self.__beginGameAction.setEnabled(True)
-        self.__endGameAction.setEnabled(False)
-        self.__pauseGameAction.setEnabled(False)
-        self.__continueGameAction.setEnabled(False)
+    def __battleEnded(self):
+        self.__arenaProcess = None
+        self.__beginBattleAction.setEnabled(True)
+        self.__endBattleAction.setEnabled(False)
+        self.__pauseBattleAction.setEnabled(False)
+        self.__continueBattleAction.setEnabled(False)
         self.__arenaWidget.setEnabled(False)
         self.__statusWidget.setEnabled(False)
 
-    def __gameLogReady(self):
-        if not self.__serverProcess.canReadLine():
+    def __battleLogReady(self):
+        if not self.__arenaProcess.canReadLine():
             return
 
-        log_entry = self.__serverProcess.readLine().data().decode("utf-8").strip()
+        log_entry = self.__arenaProcess.readLine().data().decode("utf-8").strip()
 
         match = re.match(r'^bot (.+) summoned to (\d+), (\d+), heading at (\d+)$', log_entry)
         if match:
@@ -325,9 +325,9 @@ class MainWindow(QMainWindow):
             return
 
     def closeEvent(self, event):
-        if self.__serverProcess is not None:
-            self.__serverProcess.close()
-            self.__serverProcess = None
+        if self.__arenaProcess is not None:
+            self.__arenaProcess.close()
+            self.__arenaProcess = None
 
 
 def main():

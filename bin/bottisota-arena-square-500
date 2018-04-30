@@ -22,8 +22,8 @@ logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler(sys.stderr))
 logger.handlers[0].setFormatter(logging.Formatter("%(levelname)s|%(name)s|%(asctime)s|%(message)s"))
 
-game_logger = logging.getLogger("bottisota.game")
-game_logger.addHandler(logging.StreamHandler(sys.stdout))
+battle_logger = logging.getLogger("bottisota.battle")
+battle_logger.addHandler(logging.StreamHandler(sys.stdout))
 
 def randpos():
     x = random.randint(bottisota.X_MIN, bottisota.X_MAX)
@@ -39,7 +39,7 @@ class Clock:
 
     def tick(self):
         self.__ticks += 1
-        game_logger.info("tick %d", self.__ticks)
+        battle_logger.info("tick %d", self.__ticks)
         time.sleep(bottisota.TICK_MILLIS / 1000)
 
     def now(self):
@@ -50,7 +50,7 @@ CLOCK = Clock()
 class Bot:
 
     def __init__(self, sock, idnum, x, y, heading):
-        self.__conn = bottisota.bus.ServerConnection(sock)
+        self.__conn = bottisota.bus.ArenaConnection(sock)
         self.__syscall = None
         self.__ticks_since_last_update = 1
         self.__drv_status = bottisota.protocol.DRV_STATUS_OK
@@ -128,16 +128,16 @@ class Bot:
                 self.__speed = bottisota.SPEED_MIN
             self.__x = new_x
             self.__y = new_y
-            game_logger.info("bot %d moved to %d, %d, heading at %d", self.__idnum, self.__x, self.__y, self.__heading)
+            battle_logger.info("bot %d moved to %d, %d, heading at %d", self.__idnum, self.__x, self.__y, self.__heading)
 
-class Game:
+class Battle:
 
     def __init__(self):
         self.__bots = []
         self.__is_on = True
 
-    def wait_for_bot(self, srvsock):
-        botsock = srvsock.accept()[0]
+    def wait_for_bot(self, arenasock):
+        botsock = arenasock.accept()[0]
         idnum = len(self.__bots) + 1
 
         logger.info("connection %d established", idnum)
@@ -148,14 +148,14 @@ class Game:
 
         bot = Bot(botsock, idnum, x, y, heading)
         self.__bots.append(bot)
-        game_logger.info("bot %d summoned to %d, %d, heading at %d", idnum, x, y, heading)
+        battle_logger.info("bot %d summoned to %d, %d, heading at %d", idnum, x, y, heading)
 
     def stop(self, signum, stack_frame):
         self.__is_on = False
 
     def play(self):
         initial_bot_count = len(self.__bots)
-        game_logger.info("begin")
+        battle_logger.info("begin")
         try:
             while len(self.__bots) == initial_bot_count and self.__is_on:
                 CLOCK.tick()
@@ -165,7 +165,7 @@ class Game:
                 self.__return_syscalls()
 
         finally:
-            game_logger.info("end")
+            battle_logger.info("end")
             first_error = sys.exc_info()[1]
             while self.__bots:
                 bot = self.__bots.pop()
@@ -212,7 +212,7 @@ class Game:
         for bot in self.__bots:
             bot.return_syscall()
 
-class Server:
+class Arena:
 
     def __init__(self, address=bottisota.bus.ADDRESS):
         self.__address = address
@@ -258,26 +258,26 @@ class Server:
         if first_error:
             raise first_error
 
-    def serve(self):
-        game = Game()
+    def run(self):
+        battle = Battle()
 
-        game_logger.info("init")
+        battle_logger.info("init")
 
-        game.wait_for_bot(self.__sock)
-        game.wait_for_bot(self.__sock)
+        battle.wait_for_bot(self.__sock)
+        battle.wait_for_bot(self.__sock)
 
-        signal.signal(signal.SIGUSR1, game.stop)
-        signal.signal(signal.SIGUSR2, game.stop)
-        signal.signal(signal.SIGALRM, game.stop)
-        signal.signal(signal.SIGHUP, game.stop)
-        signal.signal(signal.SIGINT, game.stop)
-        signal.signal(signal.SIGTERM, game.stop)
+        signal.signal(signal.SIGUSR1, battle.stop)
+        signal.signal(signal.SIGUSR2, battle.stop)
+        signal.signal(signal.SIGALRM, battle.stop)
+        signal.signal(signal.SIGHUP, battle.stop)
+        signal.signal(signal.SIGINT, battle.stop)
+        signal.signal(signal.SIGTERM, battle.stop)
 
-        game.play()
+        battle.play()
 
 def main():
-    with Server() as server:
-        server.serve()
+    with Arena() as arena:
+        arena.run()
 
 if __name__ == "__main__":
     main()

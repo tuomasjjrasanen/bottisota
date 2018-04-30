@@ -79,7 +79,7 @@ class BotConnection(_Connection):
     def sys_pos(self):
         return self.call(bottisota.protocol.SYSCALL_POS_FUN)
 
-class ServerConnection(_Connection):
+class ArenaConnection(_Connection):
 
     def __init__(self, sock):
-        _Connection.__init__(self, sock, bottisota.protocol.SrvStack())
+        _Connection.__init__(self, sock, bottisota.protocol.ArenaStack())
