@@ -1,0 +1,55 @@
+= Bottisota
+
+Bottisota is a programming game where players program battle bot
+AIs. All bots are identical, it's the AI which makes all the
+difference.
+
+Bottisota is a finnish compound word and it literally means bot war
+(bot == botti, war == sota).
+
+Similar projects:
+
+* TclRobots
+* Realtime battle
+
+== Entities
+
+The world of Bottisota consists of following entities:
+
+* Arena
+* Bots
+
+=== Arena
+
+Arena is the 2D space where all the action takes place.
+
+=== Bot
+
+A bot ia a mobile programmable weapon platform with following
+attributes:
+
+* x coordinate: integer
+* y coordinate: integer
+* heading: integer
+* speed: integer
+
+==== Bot Control Protocol
+
+Bot Control Protocol (BCP) is line-oriented request-response text
+protocol which defines how bots and AI programs can communicate with
+each other.
+
++-------------------+---------------------------+
+|Call message       |Return message             |
++===================+===========================+
+|POS?               |POS= x y speed heading     |
++-------------------+---------------------------+
+|CLK?               |CLK= tick                  |
++-------------------+---------------------------+
+|DRV? speed heading |DRV= status                |
++-------------------+---------------------------+
+
+== Build and install
+
+Simply just run:
+  python3 setup.py install --user
