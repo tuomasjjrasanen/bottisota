@@ -128,7 +128,7 @@ class Bot:
                 self.__speed = bottisota.SPEED_MIN
             self.__x = new_x
             self.__y = new_y
-            battle_logger.info("bot %d moved to %d, %d, heading at %d", self.__idnum, self.__x, self.__y, self.__heading)
+            battle_logger.info("bot %d moved to %d, %d, heading to %d, speed %d", self.__idnum, self.__x, self.__y, self.__heading, self.__speed)
 
 class Battle:
 
@@ -148,7 +148,7 @@ class Battle:
 
         bot = Bot(botsock, idnum, x, y, heading)
         self.__bots.append(bot)
-        battle_logger.info("bot %d summoned to %d, %d, heading at %d", idnum, x, y, heading)
+        battle_logger.info("bot %d summoned to %d, %d, heading to %d", idnum, x, y, heading)
 
     def stop(self, signum, stack_frame):
         self.__is_on = False

@@ -110,12 +110,26 @@ class StatusWidget(QWidget):
 
         header_labels = ["Bot", "X", "Y", "Speed", "Heading"]
 
+        self.__botRows = {}
+
         self.__tableWidget = QTableWidget(0, len(header_labels), self)
         self.__tableWidget.verticalHeader().setVisible(False)
 
         self.__tableWidget.setHorizontalHeaderLabels(header_labels)
 
         layout.addWidget(self.__tableWidget)
+
+    def setStatus(self, bot, x, y, speed, heading):
+        try:
+            row = self.__botRows[bot]
+        except KeyError:
+            row = self.__botRows[bot] = self.__tableWidget.rowCount()
+            self.__tableWidget.insertRow(row)
+        self.__tableWidget.setItem(row, 0, QTableWidgetItem(bot))
+        self.__tableWidget.setItem(row, 1, QTableWidgetItem(str(x)))
+        self.__tableWidget.setItem(row, 2, QTableWidgetItem(str(y)))
+        self.__tableWidget.setItem(row, 3, QTableWidgetItem(str(speed)))
+        self.__tableWidget.setItem(row, 4, QTableWidgetItem(str(heading)))
 
 class BeginDialog(QDialog):
 
@@ -300,27 +314,33 @@ class MainWindow(QMainWindow):
 
         log_entry = self.__arenaProcess.readLine().data().decode("utf-8").strip()
 
-        match = re.match(r'^bot (.+) summoned to (\d+), (\d+), heading at (\d+)$', log_entry)
+        match = re.match(r'^bot (\d+) summoned to (\d+), (\d+), heading to (\d+)$', log_entry)
         if match:
             if not self.__bots:
                 self.__redAIProcess.start()
             botid, x, y, heading = match.groups()
+            botid = int(botid)
             x = int(x)
             y = int(y)
             heading = int(heading)
-            color = [Qt.blue, Qt.red][len(self.__bots)]
+            bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
             self.__bots[botid] = self.__arenaWidget.addBot(x, y, heading, color)
+            self.__statusWidget.setStatus(bot_name, x, y, 0, heading)
             return
 
-        match = re.match(r'^bot (.+) moved to (\d+), (\d+), heading at (\d+)$', log_entry)
+        match = re.match(r'^bot (\d+) moved to (\d+), (\d+), heading to (\d+), speed (\d+)$', log_entry)
         if match:
-            botid, x, y, heading = match.groups()
+            botid, x, y, heading, speed = match.groups()
+            botid = int(botid)
             x = int(x)
             y = int(y)
             heading = int(heading)
+            speed = int(speed)
             bot = self.__bots[botid]
+            bot_name = ["Blue", "Red"][botid - 1]
             bot.setTargetPos(x, y)
             bot.setRotation(heading)
+            self.__statusWidget.setStatus(bot_name, x, y, speed, heading)
             return
 
         if re.match(r'^begin$', log_entry):
