@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+
+import bottisota
+import bottisota.bus
+import bottisota.math
+
+botconn = bottisota.bus.BotConnection()
+
+botconn.sys_clk()
+
+cx, cy = (bottisota.X_MAX // 2, bottisota.Y_MAX // 2)
+
+while True:
+    x, y, speed, heading = botconn.sys_pos()
+
+    center_distance = bottisota.math.distance((x, y), (cx, cy))
+
+    heading = bottisota.math.heading((x, y), (cx, cy))
+
+    if center_distance < 3:
+        # Close enough, stop.
+        new_speed = 0
+    elif center_distance < 3 * speed:
+        # We are getting closer, slow down.
+        new_speed = max(speed // 2, 1)
+    else:
+        # Full speed ahead.
+        new_speed = 20
+
+    botconn.sys_drv(new_speed, heading)
+
+botconn.disconnect()
