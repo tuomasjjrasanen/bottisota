@@ -316,32 +316,19 @@ class MainWindow(QMainWindow):
 
         log_entry = self.__arenaProcess.readLine().data().decode("utf-8").strip()
 
-        match = re.match(r'^bot (\d+) summoned to (\d+), (\d+), heading to (\d+)$', log_entry)
+        match = re.match(r'^bot (\d+) at (\d+), (\d+), heading to (\d+), speed (\d+)$', log_entry)
         if match:
+            botid, x, y, heading, speed = [int(v) for v in match.groups()]
+            bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
             if not self.__bots:
                 self.__redAIProcess.start()
-            botid, x, y, heading = match.groups()
-            botid = int(botid)
-            x = int(x)
-            y = int(y)
-            heading = int(heading)
-            bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
-            self.__bots[botid] = self.__arenaWidget.addBot(x, y, heading, color)
-            self.__statusWidget.setStatus(bot_name, x, y, 0, heading)
-            return
-
-        match = re.match(r'^bot (\d+) moved to (\d+), (\d+), heading to (\d+), speed (\d+)$', log_entry)
-        if match:
-            botid, x, y, heading, speed = match.groups()
-            botid = int(botid)
-            x = int(x)
-            y = int(y)
-            heading = int(heading)
-            speed = int(speed)
-            bot = self.__bots[botid]
-            bot_name = ["Blue", "Red"][botid - 1]
-            bot.setTargetPos(x, y)
-            bot.setRotation(heading)
+            try:
+                bot = self.__bots[botid]
+            except KeyError:
+                self.__bots[botid] = self.__arenaWidget.addBot(x, y, heading, color)
+            else:
+                bot.setTargetPos(x, y)
+                bot.setRotation(heading)
             self.__statusWidget.setStatus(bot_name, x, y, speed, heading)
             return
 
