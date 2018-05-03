@@ -77,7 +77,8 @@ class BotConnection(_Connection):
         return speed
 
     def sys_pos(self):
-        return self.call(bottisota.protocol.SYSCALL_POS_FUN)
+        x, y, speed, heading = self.call(bottisota.protocol.SYSCALL_POS_FUN)
+        return (x, y), speed, heading
 
 class ArenaConnection(_Connection):
 

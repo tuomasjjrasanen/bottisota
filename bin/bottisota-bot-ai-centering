@@ -8,14 +8,14 @@ botconn = bottisota.bus.BotConnection()
 
 botconn.sys_clk()
 
-cx, cy = (bottisota.X_MAX // 2, bottisota.Y_MAX // 2)
+center = (bottisota.X_MAX // 2, bottisota.Y_MAX // 2)
 
 while True:
-    x, y, speed, heading = botconn.sys_pos()
+    loc, speed, heading = botconn.sys_pos()
 
-    center_distance = bottisota.math.distance((x, y), (cx, cy))
+    center_distance = bottisota.math.distance(loc, center)
 
-    heading = bottisota.math.heading((x, y), (cx, cy))
+    heading = bottisota.math.heading(loc, center)
 
     if center_distance < 3:
         # Close enough, stop.
