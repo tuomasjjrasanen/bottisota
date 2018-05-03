@@ -286,8 +286,10 @@ class MainWindow(QMainWindow):
             return
 
         self.__blueAIProcess = QProcess(self)
+        self.__blueAIProcess.setProcessChannelMode(QProcess.ForwardedErrorChannel)
         self.__blueAIProcess.setProgram(beginDialog.blueAIProgram)
         self.__redAIProcess = QProcess(self)
+        self.__redAIProcess.setProcessChannelMode(QProcess.ForwardedErrorChannel)
         self.__redAIProcess.setProgram(beginDialog.redAIProgram)
 
         self.__blueAIProcess.start()
