@@ -30,7 +30,7 @@ attributes:
 
 * x coordinate: integer
 * y coordinate: integer
-* heading: integer
+* direction: integer
 * speed: integer
 
 ==== Bot Control Protocol
@@ -39,15 +39,15 @@ Bot Control Protocol (BCP) is line-oriented request-response text
 protocol which defines how bots and AI programs can communicate with
 each other.
 
-+-------------------+---------------------------+
-|Call message       |Return message             |
-+===================+===========================+
-|POS?               |POS= x y speed heading     |
-+-------------------+---------------------------+
-|CLK?               |CLK= tick                  |
-+-------------------+---------------------------+
-|DRV? speed heading |DRV= status                |
-+-------------------+---------------------------+
++----------------------+---------------------------+
+|Call message          |Return message             |
++======================+===========================+
+|POS?                  |POS= x y speed direction   |
++----------------------+---------------------------+
+|CLK?                  |CLK= tick                  |
++----------------------+---------------------------+
+|DRV? speed direction  |DRV= status                |
++----------------------+---------------------------+
 
 == Build and install
 

@@ -7,8 +7,8 @@ botconn = bottisota.bus.BotConnection()
 botconn.sys_clk()
 botconn.sys_drv(20, 270)
 while True:
-    err, x, y, speed, heading = botconn.sys_pos()
+    err, x, y, speed, direction = botconn.sys_pos()
     if speed == 0:
-        botconn.sys_drv(20, (heading + 90) % 360)
+        botconn.sys_drv(20, (direction + 90) % 360)
 
 botconn.disconnect()

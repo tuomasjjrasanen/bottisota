@@ -8,24 +8,24 @@ botconn = bottisota.bus.BotConnection()
 
 botconn.sys_clk()
 
-err, x, y, speed, heading = botconn.sys_pos()
+err, x, y, speed, direction = botconn.sys_pos()
 loc = x, y
 
 corner_distances = [bottisota.math.distance(loc, c) for c in bottisota.CORNERS]
 
 closest_corner = sorted(zip(bottisota.CORNERS, corner_distances), key=lambda v: v[1])[0][0]
 
-new_heading = bottisota.math.heading(loc, closest_corner)
-botconn.sys_drv(20, new_heading)
+new_direction = bottisota.math.direction(loc, closest_corner)
+botconn.sys_drv(20, new_direction)
 while True:
-    err, x, y, speed, heading = botconn.sys_pos()
+    err, x, y, speed, direction = botconn.sys_pos()
     loc = x, y
     if speed == 0:
         if loc != closest_corner:
-            new_heading = bottisota.math.heading(loc, closest_corner)
+            new_direction = bottisota.math.direction(loc, closest_corner)
         else:
             diagonal_corner = bottisota.CORNERS[(bottisota.CORNERS.index(loc) + 2) % 4]
-            new_heading = bottisota.math.heading(loc, diagonal_corner)
-        botconn.sys_drv(20, new_heading)
+            new_direction = bottisota.math.direction(loc, diagonal_corner)
+        botconn.sys_drv(20, new_direction)
 
 botconn.disconnect()

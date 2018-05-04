@@ -11,12 +11,12 @@ botconn.sys_clk()
 center = (bottisota.X_MAX // 2, bottisota.Y_MAX // 2)
 
 while True:
-    err, x, y, speed, heading = botconn.sys_pos()
+    err, x, y, speed, direction = botconn.sys_pos()
     loc = x, y
 
     center_distance = bottisota.math.distance(loc, center)
 
-    heading = bottisota.math.heading(loc, center)
+    direction = bottisota.math.direction(loc, center)
 
     if center_distance < 3:
         # Close enough, stop.
@@ -28,6 +28,6 @@ while True:
         # Full speed ahead.
         new_speed = 20
 
-    botconn.sys_drv(new_speed, heading)
+    botconn.sys_drv(new_speed, direction)
 
 botconn.disconnect()

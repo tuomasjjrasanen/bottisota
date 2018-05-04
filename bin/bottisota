@@ -90,11 +90,11 @@ class ArenaWidget(QWidget):
 
         layout.addWidget(self.__arenaGraphicsView)
 
-    def addBot(self, x, y, heading, color):
+    def addBot(self, x, y, direction, color):
         bot = GraphicsBotItem(color)
         bot.setParentItem(self.__arenaRectItem)
         bot.setPos(x, y)
-        bot.setRotation(heading)
+        bot.setRotation(direction)
 
         return bot
 
@@ -108,7 +108,7 @@ class StatusWidget(QWidget):
 
         layout = QVBoxLayout(self)
 
-        header_labels = ["Bot", "X", "Y", "Speed", "Heading"]
+        header_labels = ["Bot", "X", "Y", "Speed", "Direction"]
 
         self.__botRows = {}
 
@@ -119,7 +119,7 @@ class StatusWidget(QWidget):
 
         layout.addWidget(self.__tableWidget)
 
-    def setStatus(self, bot, x, y, speed, heading):
+    def setStatus(self, bot, x, y, speed, direction):
         try:
             row = self.__botRows[bot]
         except KeyError:
@@ -129,7 +129,7 @@ class StatusWidget(QWidget):
         self.__tableWidget.setItem(row, 1, QTableWidgetItem(str(x)))
         self.__tableWidget.setItem(row, 2, QTableWidgetItem(str(y)))
         self.__tableWidget.setItem(row, 3, QTableWidgetItem(str(speed)))
-        self.__tableWidget.setItem(row, 4, QTableWidgetItem(str(heading)))
+        self.__tableWidget.setItem(row, 4, QTableWidgetItem(str(direction)))
 
 class BeginDialog(QDialog):
 
@@ -316,20 +316,20 @@ class MainWindow(QMainWindow):
 
         log_entry = self.__arenaProcess.readLine().data().decode("utf-8").strip()
 
-        match = re.match(r'^bot (\d+) at (\d+), (\d+), heading to (\d+), speed (\d+)$', log_entry)
+        match = re.match(r'^bot (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+)$', log_entry)
         if match:
-            botid, x, y, heading, speed = [int(v) for v in match.groups()]
+            botid, x, y, direction, speed = [int(v) for v in match.groups()]
             bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
             if not self.__bots:
                 self.__redAIProcess.start()
             try:
                 bot = self.__bots[botid]
             except KeyError:
-                self.__bots[botid] = self.__arenaWidget.addBot(x, y, heading, color)
+                self.__bots[botid] = self.__arenaWidget.addBot(x, y, direction, color)
             else:
                 bot.setTargetPos(x, y)
-                bot.setRotation(heading)
-            self.__statusWidget.setStatus(bot_name, x, y, speed, heading)
+                bot.setRotation(direction)
+            self.__statusWidget.setStatus(bot_name, x, y, speed, direction)
             return
 
         if re.match(r'^begin$', log_entry):

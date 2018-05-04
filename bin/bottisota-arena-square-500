@@ -28,9 +28,9 @@ battle_logger.addHandler(logging.StreamHandler(sys.stdout))
 def randpos():
     x = random.randint(bottisota.X_MIN, bottisota.X_MAX)
     y = random.randint(bottisota.Y_MIN, bottisota.Y_MAX)
-    heading = random.randint(bottisota.HEADING_MIN, bottisota.HEADING_MAX)
+    direction = random.randint(bottisota.DIRECTION_MIN, bottisota.DIRECTION_MAX)
 
-    return (x, y), heading
+    return (x, y), direction
 
 class Clock:
 
@@ -49,7 +49,7 @@ CLOCK = Clock()
 
 class Bot:
 
-    def __init__(self, sock, idnum, loc, heading):
+    def __init__(self, sock, idnum, loc, direction):
         self.__conn = bottisota.bus.ArenaConnection(sock)
         self.__syscall = None
         self.__ticks_since_last_update = 1
@@ -57,7 +57,7 @@ class Bot:
 
         self.__idnum = idnum
         self.__x, self.__y = loc
-        self.__heading = heading
+        self.__direction = direction
         self.__speed = bottisota.SPEED_MIN
 
     @property
@@ -69,8 +69,8 @@ class Bot:
         return (self.__x, self.__y)
 
     @property
-    def heading(self):
-        return self.__heading
+    def direction(self):
+        return self.__direction
 
     @property
     def speed(self):
@@ -89,19 +89,19 @@ class Bot:
         elif self.__syscall[0] == bottisota.protocol.SYSCALL_CLK_FUN:
             self.__err = bottisota.protocol.ERR_OK
         elif self.__syscall[0] == bottisota.protocol.SYSCALL_DRV_FUN:
-            speed, heading = self.__syscall[1]
-            if speed > bottisota.SPEED_MAX or heading > bottisota.HEADING_MAX:
+            speed, direction = self.__syscall[1]
+            if speed > bottisota.SPEED_MAX or direction > bottisota.DIRECTION_MAX:
                 self.__err = bottisota.protocol.ERR_BADARG
             else:
                 self.__err = bottisota.protocol.ERR_OK
                 self.__speed = speed
-                self.__heading = heading
+                self.__direction = direction
         else:
             raise RuntimeError("unexpected syscall '%s'" % self.__syscall[0])
 
     def return_syscall(self):
         if self.__syscall[0] == bottisota.protocol.SYSCALL_POS_FUN:
-            return_values = (self.__err, self.__x, self.__y, self.__speed, self.__heading)
+            return_values = (self.__err, self.__x, self.__y, self.__speed, self.__direction)
         elif self.__syscall[0] == bottisota.protocol.SYSCALL_CLK_FUN:
             return_values = (self.__err, CLOCK.now(),)
         elif self.__syscall[0] == bottisota.protocol.SYSCALL_DRV_FUN:
@@ -113,9 +113,9 @@ class Bot:
 
     def update_position(self):
         distance = self.__speed * self.__ticks_since_last_update
-        heading_rad = math.radians(self.__heading)
-        dy = int(round(math.sin(heading_rad) * distance))
-        dx = int(round(math.cos(heading_rad) * distance))
+        direction_rad = math.radians(self.__direction)
+        dy = int(round(math.sin(direction_rad) * distance))
+        dx = int(round(math.cos(direction_rad) * distance))
         if dx or dy:
             new_x, new_y = (self.__x + dx, self.__y + dy)
             if new_x < bottisota.X_MIN or new_x > bottisota.X_MAX or new_y < bottisota.Y_MIN or new_y > bottisota.Y_MAX:
@@ -127,7 +127,7 @@ class Bot:
         self.log_status()
 
     def log_status(self):
-        battle_logger.info("bot %d at %d, %d, heading to %d, speed %d", self.__idnum, self.__x, self.__y, self.__heading, self.__speed)
+        battle_logger.info("bot %d at %d, %d, direction to %d, speed %d", self.__idnum, self.__x, self.__y, self.__direction, self.__speed)
 
 class Battle:
 
@@ -141,11 +141,11 @@ class Battle:
 
         logger.info("connection %d established", idnum)
 
-        loc, heading = randpos()
+        loc, direction = randpos()
         while loc in [b.loc for b in self.__bots]:
-            loc, heading = randpos()
+            loc, direction = randpos()
 
-        bot = Bot(botsock, idnum, loc, heading)
+        bot = Bot(botsock, idnum, loc, direction)
         self.__bots.append(bot)
         bot.log_status()
 

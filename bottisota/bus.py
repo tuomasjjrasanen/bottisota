@@ -71,8 +71,8 @@ class BotConnection(_Connection):
     def sys_clk(self):
         return self.call(bottisota.protocol.SYSCALL_CLK_FUN)
 
-    def sys_drv(self, speed, heading):
-        err, = self.call(bottisota.protocol.SYSCALL_DRV_FUN, speed, heading)
+    def sys_drv(self, speed, direction):
+        err, = self.call(bottisota.protocol.SYSCALL_DRV_FUN, speed, direction)
         return err
 
     def sys_pos(self):
