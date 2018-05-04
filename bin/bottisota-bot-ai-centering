@@ -11,7 +11,7 @@ botconn.sys_clk()
 center = (bottisota.X_MAX // 2, bottisota.Y_MAX // 2)
 
 while True:
-    x, y, speed, heading = botconn.sys_pos()
+    err, x, y, speed, heading = botconn.sys_pos()
     loc = x, y
 
     center_distance = bottisota.math.distance(loc, center)

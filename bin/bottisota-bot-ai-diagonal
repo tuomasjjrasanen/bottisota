@@ -8,7 +8,7 @@ botconn = bottisota.bus.BotConnection()
 
 botconn.sys_clk()
 
-x, y, speed, heading = botconn.sys_pos()
+err, x, y, speed, heading = botconn.sys_pos()
 loc = x, y
 
 corner_distances = [bottisota.math.distance(loc, c) for c in bottisota.CORNERS]
@@ -18,7 +18,7 @@ closest_corner = sorted(zip(bottisota.CORNERS, corner_distances), key=lambda v: 
 new_heading = bottisota.math.heading(loc, closest_corner)
 botconn.sys_drv(20, new_heading)
 while True:
-    x, y, speed, heading = botconn.sys_pos()
+    err, x, y, speed, heading = botconn.sys_pos()
     loc = x, y
     if speed == 0:
         if loc != closest_corner:

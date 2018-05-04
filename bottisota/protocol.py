@@ -7,19 +7,20 @@ SYSCALL_DRV_RET = "DRV="
 SYSCALL_POS_FUN = "POS?"
 SYSCALL_POS_RET = "POS="
 
-DRV_STATUS_OK = 0
-DRV_STATUS_BADARG = 1
+ERR_OK = 0
+ERR_UNKNOWN = 1
+ERR_BADARG = 2
 
 _CALLER_ARENA = "ARENA"
 _CALLER_BOT = "BOT"
 
 _SYSCALL_ARG_FORMATS = {
     SYSCALL_CLK_FUN: "",
-    SYSCALL_CLK_RET: " {}",
+    SYSCALL_CLK_RET: " {} {}",
     SYSCALL_DRV_FUN: " {} {}",
     SYSCALL_DRV_RET: " {}",
     SYSCALL_POS_FUN: "",
-    SYSCALL_POS_RET: " {} {} {} {}",
+    SYSCALL_POS_RET: " {} {} {} {} {}",
 }
 
 def format_syscall(syscall, *args):
@@ -30,11 +31,11 @@ class _Stack:
     def __init__(self, send_caller, recv_caller):
         lexicon = (
             (SYSCALL_CLK_FUN, r"^$"),
-            (SYSCALL_CLK_RET, r"^([0-9]+)$", int),
+            (SYSCALL_CLK_RET, r"^([0-9]+) ([0-9]+)$", int, int),
             (SYSCALL_DRV_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
             (SYSCALL_DRV_RET, r"^([0-9]+)$", int),
             (SYSCALL_POS_FUN, r"^$"),
-            (SYSCALL_POS_RET, r"^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int, int),
+            (SYSCALL_POS_RET, r"^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int, int, int),
         )
 
         grammar = (

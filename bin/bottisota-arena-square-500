@@ -53,7 +53,7 @@ class Bot:
         self.__conn = bottisota.bus.ArenaConnection(sock)
         self.__syscall = None
         self.__ticks_since_last_update = 1
-        self.__drv_status = bottisota.protocol.DRV_STATUS_OK
+        self.__err = None
 
         self.__idnum = idnum
         self.__x = x
@@ -86,18 +86,19 @@ class Bot:
 
     def read_syscall(self):
         self.__syscall = self.__conn.recv(False)
+        self.__err = bottisota.protocol.ERR_UNKNOWN
 
     def evaluate_syscall(self):
         if self.__syscall[0] == bottisota.protocol.SYSCALL_POS_FUN:
-            pass
+            self.__err = bottisota.protocol.ERR_OK
         elif self.__syscall[0] == bottisota.protocol.SYSCALL_CLK_FUN:
-            pass
+            self.__err = bottisota.protocol.ERR_OK
         elif self.__syscall[0] == bottisota.protocol.SYSCALL_DRV_FUN:
             speed, heading = self.__syscall[1]
             if speed > bottisota.SPEED_MAX or heading > bottisota.HEADING_MAX:
-                self.__drv_status = bottisota.protocol.DRV_STATUS_BADARG
+                self.__err = bottisota.protocol.ERR_BADARG
             else:
-                self.__drv_status = bottisota.protocol.DRV_STATUS_OK
+                self.__err = bottisota.protocol.ERR_OK
                 self.__speed = speed
                 self.__heading = heading
         else:
@@ -105,11 +106,11 @@ class Bot:
 
     def return_syscall(self):
         if self.__syscall[0] == bottisota.protocol.SYSCALL_POS_FUN:
-            return_values = (self.__x, self.__y, self.__speed, self.__heading)
+            return_values = (self.__err, self.__x, self.__y, self.__speed, self.__heading)
         elif self.__syscall[0] == bottisota.protocol.SYSCALL_CLK_FUN:
-            return_values = (CLOCK.now(),)
+            return_values = (self.__err, CLOCK.now(),)
         elif self.__syscall[0] == bottisota.protocol.SYSCALL_DRV_FUN:
-            return_values = (self.__drv_status,)
+            return_values = (self.__err,)
         else:
             raise RuntimeError("unexpected syscall '%s'" % self.__syscall[0])
 

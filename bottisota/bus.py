@@ -69,12 +69,11 @@ class BotConnection(_Connection):
         _Connection.__init__(self, _connect(), bottisota.protocol.BotStack())
 
     def sys_clk(self):
-        tick, = self.call(bottisota.protocol.SYSCALL_CLK_FUN)
-        return tick
+        return self.call(bottisota.protocol.SYSCALL_CLK_FUN)
 
     def sys_drv(self, speed, heading):
-        speed, = self.call(bottisota.protocol.SYSCALL_DRV_FUN, speed, heading)
-        return speed
+        err, = self.call(bottisota.protocol.SYSCALL_DRV_FUN, speed, heading)
+        return err
 
     def sys_pos(self):
         return self.call(bottisota.protocol.SYSCALL_POS_FUN)
