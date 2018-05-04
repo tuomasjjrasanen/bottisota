@@ -30,7 +30,7 @@ def randpos():
     y = random.randint(bottisota.Y_MIN, bottisota.Y_MAX)
     heading = random.randint(bottisota.HEADING_MIN, bottisota.HEADING_MAX)
 
-    return x, y, heading
+    return (x, y), heading
 
 class Clock:
 
@@ -49,15 +49,14 @@ CLOCK = Clock()
 
 class Bot:
 
-    def __init__(self, sock, idnum, x, y, heading):
+    def __init__(self, sock, idnum, loc, heading):
         self.__conn = bottisota.bus.ArenaConnection(sock)
         self.__syscall = None
         self.__ticks_since_last_update = 1
         self.__err = None
 
         self.__idnum = idnum
-        self.__x = x
-        self.__y = y
+        self.__x, self.__y = loc
         self.__heading = heading
         self.__speed = bottisota.SPEED_MIN
 
@@ -66,12 +65,8 @@ class Bot:
         return self.__idnum
 
     @property
-    def x(self):
-        return self.__x
-
-    @property
-    def y(self):
-        return self.__y
+    def loc(self):
+        return (self.__x, self.__y)
 
     @property
     def heading(self):
@@ -146,11 +141,11 @@ class Battle:
 
         logger.info("connection %d established", idnum)
 
-        x, y, heading = randpos()
-        while (x, y) in [(b.x, b.y) for b in self.__bots]:
-            x, y, heading = randpos()
+        loc, heading = randpos()
+        while loc in [b.loc for b in self.__bots]:
+            loc, heading = randpos()
 
-        bot = Bot(botsock, idnum, x, y, heading)
+        bot = Bot(botsock, idnum, loc, heading)
         self.__bots.append(bot)
         bot.log_status()
 
