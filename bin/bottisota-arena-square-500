@@ -60,6 +60,18 @@ class Bot:
         self.__direction = direction
         self.__speed = bottisota.SPEED_MIN
 
+        self.__read_syscall_methods = {
+            bottisota.protocol.SYSCALL_POS_FUN: self.__read_syscall_pos,
+            bottisota.protocol.SYSCALL_CLK_FUN: self.__read_syscall_clk,
+            bottisota.protocol.SYSCALL_DRV_FUN: self.__read_syscall_drv,
+        }
+
+        self.__return_syscall_methods = {
+            bottisota.protocol.SYSCALL_POS_FUN: self.__return_syscall_pos,
+            bottisota.protocol.SYSCALL_CLK_FUN: self.__return_syscall_clk,
+            bottisota.protocol.SYSCALL_DRV_FUN: self.__return_syscall_drv,
+        }
+
     @property
     def idnum(self):
         return self.__idnum
@@ -79,37 +91,40 @@ class Bot:
     def shutdown(self):
         self.__conn.disconnect()
 
+    def __read_syscall_pos(self):
+        self.__err = bottisota.protocol.ERR_OK
+
+    def __read_syscall_clk(self):
+        self.__err = bottisota.protocol.ERR_OK
+
+    def __read_syscall_drv(self):
+        speed, direction = self.__syscall[1]
+        if speed > bottisota.SPEED_MAX or direction > bottisota.DIRECTION_MAX:
+            self.__err = bottisota.protocol.ERR_BADARG
+        else:
+            self.__err = bottisota.protocol.ERR_OK
+            self.__speed = speed
+            self.__direction = direction
+
     def read_syscall(self):
         self.__syscall = self.__conn.recv(False)
         self.__err = bottisota.protocol.ERR_UNKNOWN
 
-    def evaluate_syscall(self):
-        if self.__syscall[0] == bottisota.protocol.SYSCALL_POS_FUN:
-            self.__err = bottisota.protocol.ERR_OK
-        elif self.__syscall[0] == bottisota.protocol.SYSCALL_CLK_FUN:
-            self.__err = bottisota.protocol.ERR_OK
-        elif self.__syscall[0] == bottisota.protocol.SYSCALL_DRV_FUN:
-            speed, direction = self.__syscall[1]
-            if speed > bottisota.SPEED_MAX or direction > bottisota.DIRECTION_MAX:
-                self.__err = bottisota.protocol.ERR_BADARG
-            else:
-                self.__err = bottisota.protocol.ERR_OK
-                self.__speed = speed
-                self.__direction = direction
-        else:
-            raise RuntimeError("unexpected syscall '%s'" % self.__syscall[0])
+        self.__read_syscall_methods[self.__syscall[0]]()
+
+    def __return_syscall_pos(self):
+        return self.__x, self.__y, self.__speed, self.__direction
+
+    def __return_syscall_clk(self):
+        return CLOCK.now(),
+
+    def __return_syscall_drv(self):
+        return self.__err,
 
     def return_syscall(self):
-        if self.__syscall[0] == bottisota.protocol.SYSCALL_POS_FUN:
-            return_values = (self.__err, self.__x, self.__y, self.__speed, self.__direction)
-        elif self.__syscall[0] == bottisota.protocol.SYSCALL_CLK_FUN:
-            return_values = (self.__err, CLOCK.now(),)
-        elif self.__syscall[0] == bottisota.protocol.SYSCALL_DRV_FUN:
-            return_values = (self.__err,)
-        else:
-            raise RuntimeError("unexpected syscall '%s'" % self.__syscall[0])
-
-        self.__conn.send(self.__syscall[0].replace("?", "="), *return_values)
+        return_values = self.__return_syscall_methods[self.__syscall[0]]()
+        self.__conn.send(self.__syscall[0].replace("?", "="), self.__err, *return_values)
+        self.__syscall = None
 
     def update_position(self):
         distance = self.__speed * self.__ticks_since_last_update
@@ -124,7 +139,6 @@ class Bot:
                 self.__speed = bottisota.SPEED_MIN
             self.__x = new_x
             self.__y = new_y
-        self.log_status()
 
     def log_status(self):
         battle_logger.info("bot %d at %d, %d, direction to %d, speed %d", self.__idnum, self.__x, self.__y, self.__direction, self.__speed)
@@ -159,9 +173,9 @@ class Battle:
             while len(self.__bots) == initial_bot_count and self.__is_on:
                 CLOCK.tick()
                 self.__read_syscalls()
-                self.__evaluate_syscalls()
                 self.__update()
                 self.__return_syscalls()
+                self.__log_status()
 
         finally:
             battle_logger.info("end")
@@ -177,10 +191,6 @@ class Battle:
             if first_error:
                 raise first_error
 
-    def __evaluate_syscalls(self):
-        for bot in self.__bots:
-            bot.evaluate_syscall()
-
     def __update_positions(self):
         # TODO: dynamic collision detection
         for bot in self.__bots:
@@ -188,6 +198,10 @@ class Battle:
 
     def __update(self):
         self.__update_positions()
+
+    def __log_status(self):
+        for bot in self.__bots:
+            bot.log_status()
 
     def __read_syscalls(self):
         failed_bots = []
