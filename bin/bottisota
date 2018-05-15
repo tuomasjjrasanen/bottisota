@@ -131,6 +131,10 @@ class StatusWidget(QWidget):
         self.__tableWidget.setItem(row, 3, QTableWidgetItem(str(speed)))
         self.__tableWidget.setItem(row, 4, QTableWidgetItem(str(direction)))
 
+        for i in range(self.__tableWidget.rowCount()):
+            for j in range(self.__tableWidget.columnCount()):
+                self.__tableWidget.item(i, j).setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+
 class BeginDialog(QDialog):
 
     def __init__(self, *args):
