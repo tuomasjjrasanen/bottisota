@@ -28,7 +28,7 @@ battle_logger.addHandler(logging.StreamHandler(sys.stdout))
 def randpos():
     x = random.randint(bottisota.X_MIN, bottisota.X_MAX)
     y = random.randint(bottisota.Y_MIN, bottisota.Y_MAX)
-    direction = random.randint(bottisota.DIRECTION_MIN, bottisota.DIRECTION_MAX)
+    direction = random.randint(0, 359)
 
     return (x, y), direction
 
@@ -99,12 +99,12 @@ class Bot:
 
     def __read_syscall_drv(self):
         speed, direction = self.__syscall[1]
-        if speed > bottisota.SPEED_MAX or direction > bottisota.DIRECTION_MAX:
+        if speed > bottisota.SPEED_MAX:
             self.__err = bottisota.protocol.ERR_BADARG
         else:
             self.__err = bottisota.protocol.ERR_OK
             self.__speed = speed
-            self.__direction = direction
+            self.__direction = direction % 360
 
     def read_syscall(self):
         self.__syscall = self.__conn.recv(False)
