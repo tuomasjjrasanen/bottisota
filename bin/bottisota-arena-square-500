@@ -58,7 +58,7 @@ class Bot:
         self.__idnum = idnum
         self.__x, self.__y = loc
         self.__direction = direction
-        self.__speed = bottisota.SPEED_MIN
+        self.__speed = bottisota.DRV_SPEED_MIN
 
         self.__read_syscall_methods = {
             bottisota.protocol.SYSCALL_POS_FUN: self.__read_syscall_pos,
@@ -99,7 +99,7 @@ class Bot:
 
     def __read_syscall_drv(self):
         speed, direction = self.__syscall[1]
-        if speed > bottisota.SPEED_MAX:
+        if speed > bottisota.DRV_SPEED_MAX:
             self.__err = bottisota.protocol.ERR_BADARG
         else:
             self.__err = bottisota.protocol.ERR_OK
@@ -136,7 +136,7 @@ class Bot:
             if new_x < bottisota.X_MIN or new_x > bottisota.X_MAX or new_y < bottisota.Y_MIN or new_y > bottisota.Y_MAX:
                 new_x = min(max(new_x, bottisota.X_MIN), bottisota.X_MAX)
                 new_y = min(max(new_y, bottisota.Y_MIN), bottisota.Y_MAX)
-                self.__speed = bottisota.SPEED_MIN
+                self.__speed = bottisota.DRV_SPEED_MIN
             self.__x = new_x
             self.__y = new_y
 

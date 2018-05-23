@@ -26,7 +26,7 @@ while True:
         new_speed = max(speed // 2, 1)
     else:
         # Full speed ahead.
-        new_speed = 20
+        new_speed = bottisota.DRV_SPEED_MAX
 
     botconn.sys_drv(new_speed, direction)
 
