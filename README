@@ -39,15 +39,17 @@ Bot Control Protocol (BCP) is line-oriented request-response text
 protocol which defines how bots and AI programs can communicate with
 each other.
 
-+----------------------+---------------------------+
-|Call message          |Return message             |
-+======================+===========================+
-|POS?                  |POS= x y speed direction   |
-+----------------------+---------------------------+
-|CLK?                  |CLK= tick                  |
-+----------------------+---------------------------+
-|DRV? speed direction  |DRV= status                |
-+----------------------+---------------------------+
++--------------------------+---------------------------+
+|Call message              |Return message             |
++==========================+===========================+
+|POS?                      |POS= x y speed direction   |
++--------------------------+---------------------------+
+|CLK?                      |CLK= tick                  |
++--------------------------+---------------------------+
+|DRV? speed direction      |DRV= status                |
++--------------------------+---------------------------+
+|SCN? direction resolution |SCN= distance              |
++--------------------------+---------------------------+
 
 == Build and install
 

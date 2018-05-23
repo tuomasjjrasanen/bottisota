@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import math
 import os
 import re
 import signal
@@ -48,6 +49,7 @@ class GraphicsBotItem(QGraphicsPolygonItem):
         QGraphicsPolygonItem.__init__(self, polygon, parent)
 
         self.__waypoints = []
+        self.__beam = None
 
         self.setBrush(color)
 
@@ -72,6 +74,27 @@ class GraphicsBotItem(QGraphicsPolygonItem):
         if self.__waypoints:
             x, y = self.__waypoints.pop()
             self.setPos(x, y)
+
+    def showScanBeam(self, direction, resolution):
+        if self.__beam is None:
+            self.__beam = QGraphicsPathItem(self)
+            self.__beam.setBrush(QColor(255, 255, 0, 64))
+
+        path = QPainterPath()
+        path.lineTo(-math.cos(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE_MAX,
+                    +math.sin(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE_MAX)
+        path.quadTo(0, bottisota.SCN_DISTANCE_MAX,
+                    +math.cos(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE_MAX,
+                    +math.sin(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE_MAX)
+        path.closeSubpath()
+
+        self.__beam.setPath(path)
+        self.__beam.setRotation(direction - self.rotation() - 90)
+        self.__beam.show()
+
+    def hideScanBeam(self):
+        if self.__beam is not None:
+            self.__beam.hide()
 
 class ArenaWidget(QWidget):
 
@@ -125,6 +148,7 @@ class StatusWidget(QWidget):
         except KeyError:
             row = self.__botRows[bot] = self.__tableWidget.rowCount()
             self.__tableWidget.insertRow(row)
+
         self.__tableWidget.setItem(row, 0, QTableWidgetItem(bot))
         self.__tableWidget.setItem(row, 1, QTableWidgetItem(str(x)))
         self.__tableWidget.setItem(row, 2, QTableWidgetItem(str(y)))
@@ -264,7 +288,7 @@ class MainWindow(QMainWindow):
         self.__arenaProcess.started.connect(self.__battleBegun)
         self.__arenaProcess.finished.connect(self.__battleEnded)
         self.__arenaProcess.setProcessChannelMode(QProcess.ForwardedErrorChannel)
-        self.__arenaProcess.readyReadStandardOutput.connect(self.__battleLogReady)
+        self.__arenaProcess.readyReadStandardOutput.connect(self.__readBattleLog)
 
         self.__arenaProcess.start("bottisota-arena-square-500", QIODevice.ReadOnly)
 
@@ -306,7 +330,6 @@ class MainWindow(QMainWindow):
         self.__statusWidget.setEnabled(True)
 
     def __battleEnded(self):
-        self.__arenaProcess = None
         self.__beginBattleAction.setEnabled(True)
         self.__endBattleAction.setEnabled(False)
         self.__pauseBattleAction.setEnabled(False)
@@ -314,41 +337,61 @@ class MainWindow(QMainWindow):
         self.__arenaWidget.setEnabled(False)
         self.__statusWidget.setEnabled(False)
 
-    def __battleLogReady(self):
-        if not self.__arenaProcess.canReadLine():
-            return
+    def __readBattleLog(self):
+        try:
+            if not self.__arenaProcess.canReadLine():
+                return
 
-        log_entry = self.__arenaProcess.readLine().data().decode("utf-8").strip()
+            log_entry = self.__arenaProcess.readLine().data().decode("utf-8").strip()
 
-        match = re.match(r'^bot (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+)$', log_entry)
-        if match:
-            botid, x, y, direction, speed = [int(v) for v in match.groups()]
-            bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
-            if not self.__bots:
-                self.__redAIProcess.start()
-            try:
-                bot = self.__bots[botid]
-            except KeyError:
-                self.__bots[botid] = self.__arenaWidget.addBot(x, y, direction, color)
-            else:
-                bot.setTargetPos(x, y)
-                bot.setRotation(direction)
-            self.__statusWidget.setStatus(bot_name, x, y, speed, direction)
-            return
+            match = re.match(r'^bot (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+), scanning direction (\d+)±(\d+)$', log_entry)
+            if match:
+                botid, x, y, direction, speed, scan_direction, scan_resolution = [int(v) for v in match.groups()]
+                bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
+                if not self.__bots:
+                    self.__redAIProcess.start()
+                try:
+                    bot = self.__bots[botid]
+                except KeyError:
+                    self.__bots[botid] = self.__arenaWidget.addBot(x, y, direction, color)
+                else:
+                    bot.setTargetPos(x, y)
+                    bot.setRotation(direction)
+                    bot.showScanBeam(scan_direction, scan_resolution)
+                self.__statusWidget.setStatus(bot_name, x, y, speed, direction)
+                return
 
-        if re.match(r'^begin$', log_entry):
-            self.__timer.start(50)
-            return
+            match = re.match(r'^bot (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+)$', log_entry)
+            if match:
+                botid, x, y, direction, speed = [int(v) for v in match.groups()]
+                bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
+                if not self.__bots:
+                    self.__redAIProcess.start()
+                try:
+                    bot = self.__bots[botid]
+                except KeyError:
+                    self.__bots[botid] = self.__arenaWidget.addBot(x, y, direction, color)
+                else:
+                    bot.setTargetPos(x, y)
+                    bot.setRotation(direction)
+                    bot.hideScanBeam()
+                self.__statusWidget.setStatus(bot_name, x, y, speed, direction)
+                return
 
-        if re.match(r'^end$', log_entry):
-            self.__timer.stop()
-            return
+            if re.match(r'^begin$', log_entry):
+                self.__timer.start(50)
+                return
+
+            if re.match(r'^end$', log_entry):
+                self.__timer.stop()
+                return
+        except:
+            self.close()
+            raise
 
     def closeEvent(self, event):
         if self.__arenaProcess is not None:
             self.__arenaProcess.close()
-            self.__arenaProcess = None
-
 
 def main():
     app = QApplication(sys.argv)

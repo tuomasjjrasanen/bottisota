@@ -14,6 +14,7 @@ import time
 
 import bottisota
 import bottisota.bus
+import bottisota.math
 import bottisota.protocol
 
 logger = logging.getLogger("bottisota")
@@ -60,16 +61,23 @@ class Bot:
         self.__direction = direction
         self.__speed = bottisota.DRV_SPEED_MIN
 
+        self.__scn_direction = 0
+        self.__scn_resolution = 0
+        self.__scn_distance = 0
+        self.__scn_on = False
+
         self.__read_syscall_methods = {
             bottisota.protocol.SYSCALL_POS_FUN: self.__read_syscall_pos,
             bottisota.protocol.SYSCALL_CLK_FUN: self.__read_syscall_clk,
             bottisota.protocol.SYSCALL_DRV_FUN: self.__read_syscall_drv,
+            bottisota.protocol.SYSCALL_SCN_FUN: self.__read_syscall_scn,
         }
 
         self.__return_syscall_methods = {
             bottisota.protocol.SYSCALL_POS_FUN: self.__return_syscall_pos,
             bottisota.protocol.SYSCALL_CLK_FUN: self.__return_syscall_clk,
             bottisota.protocol.SYSCALL_DRV_FUN: self.__return_syscall_drv,
+            bottisota.protocol.SYSCALL_SCN_FUN: self.__return_syscall_scn,
         }
 
     @property
@@ -106,6 +114,17 @@ class Bot:
             self.__speed = speed
             self.__direction = direction % 360
 
+    def __read_syscall_scn(self):
+        direction, resolution = self.__syscall[1]
+        if resolution > bottisota.SCN_RESOLUTION_MAX:
+            self.__err = bottisota.protocol.ERR_BADARG
+        else:
+            self.__err = bottisota.protocol.ERR_OK
+            self.__scn_direction = direction % 360
+            self.__scn_resolution = resolution
+            self.__scn_distance = 0
+            self.__scn_on = True
+
     def read_syscall(self):
         self.__syscall = self.__conn.recv(False)
         self.__err = bottisota.protocol.ERR_UNKNOWN
@@ -120,6 +139,15 @@ class Bot:
 
     def __return_syscall_drv(self):
         return self.__err,
+
+    def __return_syscall_scn(self):
+        scn_distance = self.__scn_distance
+        self.__scn_distance = 0
+        self.__scn_resolution = 0
+        self.__scn_direction = 0
+        self.__scn_on = False
+
+        return scn_distance,
 
     def return_syscall(self):
         return_values = self.__return_syscall_methods[self.__syscall[0]]()
@@ -140,8 +168,27 @@ class Bot:
             self.__x = new_x
             self.__y = new_y
 
+    def update_scan(self, target):
+        if self.__syscall[0] != bottisota.protocol.SYSCALL_SCN_FUN:
+            return
+
+        target_distance = bottisota.math.distance(self.loc, target.loc)
+        if target_distance > bottisota.SCN_DISTANCE_MAX:
+            return
+
+        target_direction = bottisota.math.direction(self.loc, target.loc)
+        left_bound = (self.__scn_direction - self.__scn_resolution) % 360
+        right_bound = (self.__scn_direction + self.__scn_resolution) % 360
+        if left_bound <= target_direction <= right_bound:
+            distance_min = max(target_distance - bottisota.SCN_ERROR_PER_RESOLUTION * self.__scn_resolution, bottisota.SCN_DISTANCE_MIN)
+            distance_max = min(target_distance + bottisota.SCN_ERROR_PER_RESOLUTION * self.__scn_resolution, bottisota.SCN_DISTANCE_MAX)
+            self.__scn_distance = random.randint(round(distance_min), round(distance_max))
+
     def log_status(self):
-        battle_logger.info("bot %d at %d, %d, direction to %d, speed %d", self.__idnum, self.__x, self.__y, self.__direction, self.__speed)
+        if self.__scn_on:
+            battle_logger.info("bot %d at %d, %d, direction to %d, speed %d, scanning direction %d±%d", self.__idnum, self.__x, self.__y, self.__direction, self.__speed, self.__scn_direction, self.__scn_resolution)
+        else:
+            battle_logger.info("bot %d at %d, %d, direction to %d, speed %d", self.__idnum, self.__x, self.__y, self.__direction, self.__speed)
 
 class Battle:
 
@@ -174,8 +221,8 @@ class Battle:
                 CLOCK.tick()
                 self.__read_syscalls()
                 self.__update()
-                self.__return_syscalls()
                 self.__log_status()
+                self.__return_syscalls()
 
         finally:
             battle_logger.info("end")
@@ -196,8 +243,13 @@ class Battle:
         for bot in self.__bots:
             bot.update_position()
 
+    def __update_scans(self):
+        for scanning_bot, scanned_bot in itertools.permutations(self.__bots, 2):
+            scanning_bot.update_scan(scanned_bot)
+
     def __update(self):
         self.__update_positions()
+        self.__update_scans()
 
     def __log_status(self):
         for bot in self.__bots:

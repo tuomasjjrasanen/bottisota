@@ -78,6 +78,9 @@ class BotConnection(_Connection):
     def sys_pos(self):
         return self.call(bottisota.protocol.SYSCALL_POS_FUN)
 
+    def sys_scn(self, direction, resolution):
+        return self.call(bottisota.protocol.SYSCALL_SCN_FUN, direction, resolution)
+
 class ArenaConnection(_Connection):
 
     def __init__(self, sock):
