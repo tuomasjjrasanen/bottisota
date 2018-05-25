@@ -1,0 +1,38 @@
+#!/bin/sh
+
+set -Eeu
+
+on_exit()
+{
+    set +e
+
+    if [ -n "${dotfile}" ]; then
+	rm -f "${dotfile}"
+    fi
+
+    # if [ -n "${pngfile}" ]; then
+    # 	rm -f "${pngfile}"
+    # fi
+
+    exit $exitval
+}
+
+exitval=1
+dotfile=
+# pngfile=
+
+trap on_exit INT TERM HUP USR1 USR2 QUIT EXIT
+
+dotfile=$(mktemp)
+# pngfile=$(mktemp)
+
+echo 'strict digraph states {' >"${dotfile}"
+sed -r -n 's/^[ ]*\("(.+)"[ ]*,[ ]*"(.+)"[ ]*,[ ]*"(.+)"[ ]*\)[ ]*,.*$/\1 -> \3 [label="\2"];/p' >>"${dotfile}"
+echo '}' >>"${dotfile}"
+
+dot -Txlib "${dotfile}"
+
+# dot -Tpng "${dotfile}" >"${pngfile}"
+# sxiv "${pngfile}"
+
+exitval=0
