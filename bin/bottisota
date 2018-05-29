@@ -269,6 +269,9 @@ class MainWindow(QMainWindow):
         fileMenu = menuBar.addMenu("&File")
         fileMenu.addAction(self.__quitAction)
 
+        viewMenu = menuBar.addMenu("&View")
+        viewMenu.addAction(self.__statusDockWidget.toggleViewAction())
+
         battleMenu = menuBar.addMenu("&Battle")
         battleMenu.addAction(self.__beginBattleAction)
         battleMenu.addAction(self.__pauseBattleAction)
