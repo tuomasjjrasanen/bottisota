@@ -234,6 +234,7 @@ class MainWindow(QMainWindow):
         self.__statusDockWidget = QDockWidget(self)
         self.__statusDockWidget.setWidget(self.__statusWidget)
         self.__statusDockWidget.setWindowTitle("Status")
+        self.__statusDockWidget.setVisible(False)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.__statusDockWidget)
 
         self.__beginBattleAction = QAction(self)
