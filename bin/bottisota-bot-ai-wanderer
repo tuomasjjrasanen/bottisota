@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+
+import random
+
+import bottisota
+import bottisota.math
+import bottisota.bus
+
+def move_to(botconn, destination):
+    while True:
+        err, x, y, speed, direction = botconn.sys_pos()
+        loc = x, y
+
+        distance_to_destination = bottisota.math.distance(loc, destination)
+
+        direction = bottisota.math.direction(loc, destination)
+
+        if distance_to_destination < 5:
+            return
+
+        if distance_to_destination < 5 * speed:
+            # We are getting closer, slow down.
+            speed = max(speed // 2, 1)
+        else:
+            # Full speed ahead.
+            speed = bottisota.DRV_SPEED_MAX
+
+        botconn.sys_drv(speed, direction)
+
+def randloc():
+    x = random.randint(bottisota.X_MIN, bottisota.X_MAX)
+    y = random.randint(bottisota.Y_MIN, bottisota.Y_MAX)
+
+    return x, y
+
+botconn = bottisota.bus.BotConnection()
+
+botconn.sys_clk()
+while True:
+    destination = randloc()
+    move_to(botconn, destination)
+
+botconn.disconnect()
