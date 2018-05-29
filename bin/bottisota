@@ -172,17 +172,17 @@ class BeginDialog(QDialog):
 
         formLayout = QFormLayout()
 
-        self.__blueAIComboBox = QComboBox()
-        self.__redAIComboBox = QComboBox()
+        self.__blueBotComboBox = QComboBox()
+        self.__redBotComboBox = QComboBox()
 
-        ai_programs = [f for f in os.listdir(os.path.dirname(sys.argv[0])) if f.startswith("bottisota-bot-ai-")]
+        bot_programs = [f for f in os.listdir(os.path.dirname(sys.argv[0])) if f.startswith("bottisota-bot-")]
 
-        for ai_program in ai_programs:
-            self.__blueAIComboBox.addItem(ai_program)
-            self.__redAIComboBox.addItem(ai_program)
+        for bot_program in bot_programs:
+            self.__blueBotComboBox.addItem(bot_program)
+            self.__redBotComboBox.addItem(bot_program)
 
-        formLayout.addRow("Blue AI program", self.__blueAIComboBox)
-        formLayout.addRow("Red AI program", self.__redAIComboBox)
+        formLayout.addRow("Blue Bot program", self.__blueBotComboBox)
+        formLayout.addRow("Red Bot program", self.__redBotComboBox)
 
         layout.addLayout(formLayout)
 
@@ -193,7 +193,7 @@ class BeginDialog(QDialog):
         cancelButton.clicked.connect(self.reject)
 
         okButton = QPushButton("&Ok")
-        okButton.setEnabled(len(ai_programs) > 0)
+        okButton.setEnabled(len(bot_programs) > 0)
         okButton.clicked.connect(self.accept)
 
         buttonRowLayout.addWidget(cancelButton)
@@ -202,12 +202,12 @@ class BeginDialog(QDialog):
         layout.addLayout(buttonRowLayout)
 
     @property
-    def blueAIProgram(self):
-        return self.__blueAIComboBox.currentText()
+    def blueBotProgram(self):
+        return self.__blueBotComboBox.currentText()
 
     @property
-    def redAIProgram(self):
-        return self.__redAIComboBox.currentText()
+    def redBotProgram(self):
+        return self.__redBotComboBox.currentText()
 
 class MainWindow(QMainWindow):
 
@@ -215,8 +215,8 @@ class MainWindow(QMainWindow):
         QMainWindow.__init__(self)
 
         self.__arenaProcess = None
-        self.__blueAIProcess = None
-        self.__redAIProcess = None
+        self.__blueBotProcess = None
+        self.__redBotProcess = None
 
         self.setWindowTitle("Bottisota")
 
@@ -294,7 +294,7 @@ class MainWindow(QMainWindow):
         self.__arenaProcess.setProcessChannelMode(QProcess.ForwardedErrorChannel)
         self.__arenaProcess.readyReadStandardOutput.connect(self.__readBattleLog)
 
-        self.__arenaProcess.start("bottisota-arena-square-500", QIODevice.ReadOnly)
+        self.__arenaProcess.start("bottisota-arena", QIODevice.ReadOnly)
 
     def __pauseBattle(self):
         os.kill(self.__arenaProcess.processId(), signal.SIGSTOP)
@@ -317,14 +317,14 @@ class MainWindow(QMainWindow):
             self.__arenaProcess.terminate()
             return
 
-        self.__blueAIProcess = QProcess(self)
-        self.__blueAIProcess.setProcessChannelMode(QProcess.ForwardedErrorChannel)
-        self.__blueAIProcess.setProgram(beginDialog.blueAIProgram)
-        self.__redAIProcess = QProcess(self)
-        self.__redAIProcess.setProcessChannelMode(QProcess.ForwardedErrorChannel)
-        self.__redAIProcess.setProgram(beginDialog.redAIProgram)
+        self.__blueBotProcess = QProcess(self)
+        self.__blueBotProcess.setProcessChannelMode(QProcess.ForwardedErrorChannel)
+        self.__blueBotProcess.setProgram(beginDialog.blueBotProgram)
+        self.__redBotProcess = QProcess(self)
+        self.__redBotProcess.setProcessChannelMode(QProcess.ForwardedErrorChannel)
+        self.__redBotProcess.setProgram(beginDialog.redBotProgram)
 
-        self.__blueAIProcess.start()
+        self.__blueBotProcess.start()
 
         self.__beginBattleAction.setEnabled(False)
         self.__endBattleAction.setEnabled(True)
@@ -353,7 +353,7 @@ class MainWindow(QMainWindow):
                 botid, x, y, direction, speed, scan_direction, scan_resolution = [int(v) for v in match.groups()]
                 bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
                 if not self.__bots:
-                    self.__redAIProcess.start()
+                    self.__redBotProcess.start()
                 try:
                     bot = self.__bots[botid]
                 except KeyError:
@@ -370,7 +370,7 @@ class MainWindow(QMainWindow):
                 botid, x, y, direction, speed = [int(v) for v in match.groups()]
                 bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
                 if not self.__bots:
-                    self.__redAIProcess.start()
+                    self.__redBotProcess.start()
                 try:
                     bot = self.__bots[botid]
                 except KeyError:
