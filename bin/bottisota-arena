@@ -60,6 +60,7 @@ class Bot:
         self.__x, self.__y = loc
         self.__direction = direction
         self.__speed = bottisota.DRV_SPEED_MIN
+        self.__damage = bottisota.DAMAGE_MIN
 
         self.__scn_direction = 0
         self.__scn_resolution = 0
@@ -185,7 +186,7 @@ class Bot:
             self.__scn_distance = random.randint(round(distance_min), round(distance_max))
 
     def log_status(self):
-        battle_logger.info("bot %d at %d, %d, direction to %d, speed %d", self.__idnum, self.__x, self.__y, self.__direction, self.__speed)
+        battle_logger.info("bot %d at %d, %d, direction to %d, speed %d, damage %d", self.__idnum, self.__x, self.__y, self.__direction, self.__speed, self.__damage)
         if self.__scn_on:
             battle_logger.info("bot %d scanning direction %d±%d", self.__idnum, self.__scn_direction, self.__scn_resolution)
 

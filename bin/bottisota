@@ -131,7 +131,7 @@ class StatusWidget(QWidget):
 
         layout = QVBoxLayout(self)
 
-        header_labels = ["Bot", "X", "Y", "Speed", "Direction"]
+        header_labels = ["Bot", "X", "Y", "Speed", "Direction", "Damage"]
 
         self.__botRows = {}
 
@@ -142,7 +142,7 @@ class StatusWidget(QWidget):
 
         layout.addWidget(self.__tableWidget)
 
-    def setStatus(self, bot, x, y, speed, direction):
+    def setStatus(self, bot, x, y, speed, direction, damage):
         try:
             row = self.__botRows[bot]
         except KeyError:
@@ -154,6 +154,7 @@ class StatusWidget(QWidget):
         self.__tableWidget.setItem(row, 2, QTableWidgetItem(str(y)))
         self.__tableWidget.setItem(row, 3, QTableWidgetItem(str(speed)))
         self.__tableWidget.setItem(row, 4, QTableWidgetItem(str(direction)))
+        self.__tableWidget.setItem(row, 5, QTableWidgetItem(str(damage)))
 
         for i in range(self.__tableWidget.rowCount()):
             for j in range(self.__tableWidget.columnCount()):
@@ -346,9 +347,9 @@ class MainWindow(QMainWindow):
             while self.__arenaProcess.canReadLine():
                 log_entry = self.__arenaProcess.readLine().data().decode("utf-8").strip()
 
-                match = re.match(r'^bot (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+)$', log_entry)
+                match = re.match(r'^bot (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+), damage (\d+)$', log_entry)
                 if match:
-                    botid, x, y, direction, speed = [int(v) for v in match.groups()]
+                    botid, x, y, direction, speed, damage = [int(v) for v in match.groups()]
                     bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
                     if not self.__bots:
                         self.__redBotProcess.start()
@@ -360,7 +361,7 @@ class MainWindow(QMainWindow):
                         bot.setTargetPos(x, y)
                         bot.setRotation(direction)
                         bot.hideScanBeam()
-                    self.__statusWidget.setStatus(bot_name, x, y, speed, direction)
+                    self.__statusWidget.setStatus(bot_name, x, y, speed, direction, damage)
                     continue
 
                 match = re.match(r'^bot (\d+) scanning direction (\d+)±(\d+)$', log_entry)
