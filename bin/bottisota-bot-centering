@@ -8,7 +8,7 @@ botconn = bottisota.bus.BotConnection()
 
 botconn.sys_clk()
 
-center = (bottisota.X_MAX // 2, bottisota.Y_MAX // 2)
+center = (bottisota.ARENA_WIDTH // 2, bottisota.ARENA_HEIGHT // 2)
 
 while True:
     err, x, y, speed, direction = botconn.sys_pos()

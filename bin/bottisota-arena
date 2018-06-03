@@ -27,8 +27,8 @@ battle_logger = logging.getLogger("bottisota.battle")
 battle_logger.addHandler(logging.StreamHandler(sys.stdout))
 
 def randpos():
-    x = random.randint(bottisota.X_MIN, bottisota.X_MAX)
-    y = random.randint(bottisota.Y_MIN, bottisota.Y_MAX)
+    x = random.randint(0, bottisota.ARENA_WIDTH)
+    y = random.randint(0, bottisota.ARENA_HEIGHT)
     direction = random.randint(0, 359)
 
     return (x, y), direction
@@ -41,7 +41,7 @@ class Clock:
     def tick(self):
         self.__ticks += 1
         battle_logger.info("tick %d", self.__ticks)
-        time.sleep(bottisota.TICK_MILLIS / 1000)
+        time.sleep(bottisota.TICK_MS / 1000)
 
     def now(self):
         return self.__ticks
@@ -161,9 +161,9 @@ class Bot:
         dx = int(round(math.cos(direction_rad) * distance))
         if dx or dy:
             new_x, new_y = (self.__x + dx, self.__y + dy)
-            if new_x < bottisota.X_MIN or new_x > bottisota.X_MAX or new_y < bottisota.Y_MIN or new_y > bottisota.Y_MAX:
-                new_x = min(max(new_x, bottisota.X_MIN), bottisota.X_MAX)
-                new_y = min(max(new_y, bottisota.Y_MIN), bottisota.Y_MAX)
+            if new_x < 0 or new_x > bottisota.ARENA_WIDTH or new_y < 0 or new_y > bottisota.ARENA_HEIGHT:
+                new_x = min(max(new_x, 0), bottisota.ARENA_WIDTH)
+                new_y = min(max(new_y, 0), bottisota.ARENA_HEIGHT)
                 self.__speed = bottisota.DRV_SPEED_MIN
             self.__x = new_x
             self.__y = new_y
@@ -173,15 +173,15 @@ class Bot:
             return
 
         target_distance = bottisota.math.distance(self.loc, target.loc)
-        if target_distance > bottisota.SCN_DISTANCE_MAX:
+        if target_distance > bottisota.SCN_DISTANCE:
             return
 
         target_direction = bottisota.math.direction(self.loc, target.loc)
         left_bound = (self.__scn_direction - self.__scn_resolution) % 360
         right_bound = (self.__scn_direction + self.__scn_resolution) % 360
         if left_bound <= target_direction <= right_bound:
-            distance_min = max(target_distance - bottisota.SCN_ERROR_PER_RESOLUTION * self.__scn_resolution, bottisota.SCN_DISTANCE_MIN)
-            distance_max = min(target_distance + bottisota.SCN_ERROR_PER_RESOLUTION * self.__scn_resolution, bottisota.SCN_DISTANCE_MAX)
+            distance_min = max(target_distance - bottisota.SCN_ERROR_PER_RESOLUTION * self.__scn_resolution, 0)
+            distance_max = min(target_distance + bottisota.SCN_ERROR_PER_RESOLUTION * self.__scn_resolution, bottisota.SCN_DISTANCE)
             self.__scn_distance = random.randint(round(distance_min), round(distance_max))
 
     def log_status(self):

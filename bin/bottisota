@@ -81,11 +81,11 @@ class GraphicsBotItem(QGraphicsPolygonItem):
             self.__beam.setBrush(QColor(255, 255, 0, 64))
 
         path = QPainterPath()
-        path.lineTo(-math.cos(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE_MAX,
-                    +math.sin(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE_MAX)
-        path.quadTo(0, bottisota.SCN_DISTANCE_MAX,
-                    +math.cos(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE_MAX,
-                    +math.sin(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE_MAX)
+        path.lineTo(-math.cos(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE,
+                    +math.sin(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE)
+        path.quadTo(0, bottisota.SCN_DISTANCE,
+                    +math.cos(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE,
+                    +math.sin(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE)
         path.closeSubpath()
 
         self.__beam.setPath(path)
@@ -103,7 +103,7 @@ class ArenaWidget(QWidget):
 
         layout = QVBoxLayout(self)
 
-        self.__arenaGraphicsScene = QGraphicsScene(bottisota.X_MIN, bottisota.Y_MIN, bottisota.X_MAX, bottisota.Y_MAX, self)
+        self.__arenaGraphicsScene = QGraphicsScene(0, 0, bottisota.ARENA_WIDTH, bottisota.ARENA_HEIGHT, self)
         self.__arenaRectItem = self.__arenaGraphicsScene.addRect(self.__arenaGraphicsScene.sceneRect(), QPen(Qt.NoPen), QBrush(Qt.gray))
         self.__arenaGraphicsView = ZoomableGraphicsView(self)
         self.__arenaGraphicsView.setScene(self.__arenaGraphicsScene)

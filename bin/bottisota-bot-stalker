@@ -46,7 +46,7 @@ class Bot:
         self.direction = direction
 
     def _move_to_center(self, speed):
-        center = (bottisota.X_MAX // 2, bottisota.Y_MAX // 2)
+        center = (bottisota.ARENA_WIDTH // 2, bottisota.ARENA_HEIGHT // 2)
         direction = bottisota.math.direction(self.loc, center)
 
         self.botconn.sys_drv(speed, direction)
@@ -79,7 +79,7 @@ class Bot:
         return ""
 
     def find_center(self):
-        center = (bottisota.X_MAX // 2, bottisota.Y_MAX // 2)
+        center = (bottisota.ARENA_WIDTH // 2, bottisota.ARENA_HEIGHT // 2)
         self._sys_pos()
 
         center_distance = bottisota.math.distance(self.loc, center)
