@@ -343,52 +343,41 @@ class MainWindow(QMainWindow):
 
     def __readBattleLog(self):
         try:
-            if not self.__arenaProcess.canReadLine():
-                return
+            while self.__arenaProcess.canReadLine():
+                log_entry = self.__arenaProcess.readLine().data().decode("utf-8").strip()
 
-            log_entry = self.__arenaProcess.readLine().data().decode("utf-8").strip()
+                match = re.match(r'^bot (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+)$', log_entry)
+                if match:
+                    botid, x, y, direction, speed = [int(v) for v in match.groups()]
+                    bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
+                    if not self.__bots:
+                        self.__redBotProcess.start()
+                    try:
+                        bot = self.__bots[botid]
+                    except KeyError:
+                        self.__bots[botid] = self.__arenaWidget.addBot(x, y, direction, color)
+                    else:
+                        bot.setTargetPos(x, y)
+                        bot.setRotation(direction)
+                        bot.hideScanBeam()
+                    self.__statusWidget.setStatus(bot_name, x, y, speed, direction)
+                    continue
 
-            match = re.match(r'^bot (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+), scanning direction (\d+)±(\d+)$', log_entry)
-            if match:
-                botid, x, y, direction, speed, scan_direction, scan_resolution = [int(v) for v in match.groups()]
-                bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
-                if not self.__bots:
-                    self.__redBotProcess.start()
-                try:
+                match = re.match(r'^bot (\d+) scanning direction (\d+)±(\d+)$', log_entry)
+                if match:
+                    botid, scan_direction, scan_resolution = [int(v) for v in match.groups()]
+                    bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
                     bot = self.__bots[botid]
-                except KeyError:
-                    self.__bots[botid] = self.__arenaWidget.addBot(x, y, direction, color)
-                else:
-                    bot.setTargetPos(x, y)
-                    bot.setRotation(direction)
                     bot.showScanBeam(scan_direction, scan_resolution)
-                self.__statusWidget.setStatus(bot_name, x, y, speed, direction)
-                return
+                    continue
 
-            match = re.match(r'^bot (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+)$', log_entry)
-            if match:
-                botid, x, y, direction, speed = [int(v) for v in match.groups()]
-                bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
-                if not self.__bots:
-                    self.__redBotProcess.start()
-                try:
-                    bot = self.__bots[botid]
-                except KeyError:
-                    self.__bots[botid] = self.__arenaWidget.addBot(x, y, direction, color)
-                else:
-                    bot.setTargetPos(x, y)
-                    bot.setRotation(direction)
-                    bot.hideScanBeam()
-                self.__statusWidget.setStatus(bot_name, x, y, speed, direction)
-                return
+                if re.match(r'^begin$', log_entry):
+                    self.__timer.start(50)
+                    continue
 
-            if re.match(r'^begin$', log_entry):
-                self.__timer.start(50)
-                return
-
-            if re.match(r'^end$', log_entry):
-                self.__timer.stop()
-                return
+                if re.match(r'^end$', log_entry):
+                    self.__timer.stop()
+                    continue
         except:
             self.close()
             raise
