@@ -5,7 +5,7 @@ _VERSION = '0.1.0'
 
 setup(name='bottisota',
       version=_VERSION,
-      description='Program battle bot AIs and let them fight against each other.',
+      description='Program battle bots and let them fight against each other.',
       author='Tuomas Räsänen',
       author_email='tuomasjjrasanen@tjjr.fi',
       url='http://tjjr.fi/sw/bottisota/',
@@ -31,5 +31,5 @@ setup(name='bottisota',
           "Topic :: Games/Entertainment :: Real Time Strategy",
           "Programming Language :: Python :: 3",
         ],
-      long_description='Bottisota is a programming game where players program battle bot AIs.',
+      long_description='Bottisota is a programming game where players program battle bot controllers.',
   )

@@ -1,8 +1,8 @@
 = Bottisota
 
 Bottisota is a programming game where players program battle bot
-AIs. All bots are physically identical, it's the AI which makes all
-the difference.
+controller. All bots are physically identical, it's the controller
+logic which makes all the difference.
 
 Bottisota is a finnish compound word and it literally means bot war
 (bot == botti, war == sota).
@@ -36,8 +36,8 @@ attributes:
 ==== Bot Control Protocol
 
 Bot Control Protocol (BCP) is line-oriented request-response text
-protocol which defines how bots and AI programs can communicate with
-each other.
+protocol which defines how bots and controller programs can
+communicate with each other.
 
 +--------------------------+---------------------------+
 |Request message           |Response message           |
