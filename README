@@ -51,6 +51,8 @@ communicate with each other.
 +--------------------------+---------------------------+
 |SCN? direction resolution |SCN= distance              |
 +--------------------------+---------------------------+
+|MSL? direction distance   |MSL= status                |
++--------------------------+---------------------------+
 
 == Build and install
 

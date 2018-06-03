@@ -8,6 +8,8 @@ SYSCALL_POS_FUN = "POS?"
 SYSCALL_POS_RET = "POS="
 SYSCALL_SCN_FUN = "SCN?"
 SYSCALL_SCN_RET = "SCN="
+SYSCALL_MSL_FUN = "MSL?"
+SYSCALL_MSL_RET = "MSL="
 
 ERR_OK = 0
 ERR_UNKNOWN = 1
@@ -27,7 +29,9 @@ class _Stack:
             (SYSCALL_POS_FUN, r"^$"),
             (SYSCALL_POS_RET, r"^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int, int, int),
             (SYSCALL_SCN_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
-            (SYSCALL_SCN_RET, r"^([0-9]+) ([0-9]+)$", int, int)
+            (SYSCALL_SCN_RET, r"^([0-9]+) ([0-9]+)$", int, int),
+            (SYSCALL_MSL_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
+            (SYSCALL_MSL_RET, r"^([0-9]+)$", int),
         )
 
         grammar = (
@@ -39,6 +43,8 @@ class _Stack:
             ("POSI", (_CALLER_ARENA, SYSCALL_POS_RET), "OPER"),
             ("OPER", (_CALLER_BOT, SYSCALL_SCN_FUN), "SCAN"),
             ("SCAN", (_CALLER_ARENA, SYSCALL_SCN_RET), "OPER"),
+            ("OPER", (_CALLER_BOT, SYSCALL_MSL_FUN), "MISS"),
+            ("MISS", (_CALLER_ARENA, SYSCALL_MSL_RET), "OPER"),
             ("OPER", (_CALLER_BOT, SYSCALL_CLK_FUN), "WAIT"),
         )
 

@@ -96,6 +96,43 @@ class GraphicsBotItem(QGraphicsPolygonItem):
         if self.__beam is not None:
             self.__beam.hide()
 
+class GraphicsMissileItem(QGraphicsPolygonItem):
+
+    def __init__(self, parent=None):
+        polygon = QPolygonF([QPointF(-5, -2), QPointF(-5, 2), QPointF(10, 0)])
+        QGraphicsPolygonItem.__init__(self, polygon, parent)
+
+        self.__waypoints = []
+        self.__is_exploded = False
+
+        self.setBrush(Qt.black)
+
+    def setTargetPos(self, x, y):
+        dx = (x - self.x()) / 9
+        dy = (y - self.y()) / 9
+
+        xs = [self.x() + i * dx for i in range(9)]
+        xs.append(x)
+
+        ys = [self.y() + i * dy for i in range(9)]
+        ys.append(y)
+
+        waypoints = list(zip(xs, ys))
+        waypoints.reverse()
+        self.__waypoints.extend(waypoints)
+
+    def explode(self):
+        self.hide()
+        self.scene().removeItem(self)
+
+    def advance(self, phase):
+        if phase == 0:
+            return
+
+        if self.__waypoints:
+            x, y = self.__waypoints.pop()
+            self.setPos(x, y)
+
 class ArenaWidget(QWidget):
 
     def __init__(self, timer, *args):
@@ -123,6 +160,18 @@ class ArenaWidget(QWidget):
 
     def removeBot(self, bot):
         self.__arenaGraphicsScene.removeItem(bot)
+
+    def addMissile(self, x, y, direction):
+        missile = GraphicsMissileItem()
+        missile.setParentItem(self.__arenaRectItem)
+        missile.setPos(x, y)
+        missile.setRotation(direction)
+
+        return missile
+
+    # def removeMissile(self, missile):
+    #     missile.hide()
+    #     self.__arenaGraphicsScene.removeItem(missile)
 
 class StatusWidget(QWidget):
 
@@ -283,11 +332,17 @@ class MainWindow(QMainWindow):
         self.setMenuBar(menuBar)
 
         self.__bots = {}
+        self.__missiles = {}
 
     def __beginBattle(self):
         while self.__bots:
             botid, bot = self.__bots.popitem()
             self.__arenaWidget.removeBot(bot)
+
+        while self.__missiles:
+            missileid, missile = self.__missiles.popitem()
+            missile.explode()
+            # self.__arenaWidget.removeMissile(missile)
 
         self.__arenaProcess = QProcess(self)
         self.__arenaProcess.started.connect(self.__battleBegun)
@@ -371,6 +426,25 @@ class MainWindow(QMainWindow):
                     bot = self.__bots[botid]
                     bot.showScanBeam(scan_direction, scan_resolution)
                     continue
+
+                match = re.match(r'^missile (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+)$', log_entry)
+                if match:
+                    missileid, x, y, direction, speed = [int(v) for v in match.groups()]
+                    try:
+                        missile = self.__missiles[missileid]
+                    except KeyError:
+                        self.__missiles[missileid] = self.__arenaWidget.addMissile(x, y, direction)
+                    else:
+                        missile.setTargetPos(x, y)
+                        missile.setRotation(direction)
+                    continue
+
+                match = re.match(r'^missile (\d+) exploded at (\d+), (\d+)$', log_entry)
+                if match:
+                    missileid, x, y = [int(v) for v in match.groups()]
+                    missile = self.__missiles.pop(missileid)
+                    missile.explode()
+                    # self.__arenaWidget.removeMissile(missile)
 
                 if re.match(r'^begin$', log_entry):
                     self.__timer.start(50)

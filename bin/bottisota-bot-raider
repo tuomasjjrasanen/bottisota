@@ -1,0 +1,215 @@
+#!/usr/bin/env python3
+
+import bottisota
+import bottisota.bus
+import bottisota.math
+
+class Bot:
+
+    def __init__(self):
+        self.botconn = bottisota.bus.BotConnection()
+        self.loc = None
+        self.speed = 0
+        self.direction = 0
+        self.tick = 0
+
+        self.scn_direction = 0
+        self.scn_resolution = bottisota.SCN_RESOLUTION_MAX
+
+        self.enemy_direction = None
+        self.enemy_distance = None
+        self.enemy_speed = None
+        self.enemy_loc = None
+
+    def fsm(self, states):
+        state_transitions = {}
+
+        for state, symbol, next_state in states:
+            key = (state, symbol)
+            if key in state_transitions:
+                raise RuntimeError("duplicate state transition", key)
+            state_transitions[key] = next_state
+
+        state = states[0][0]
+
+        while True:
+            symbol = getattr(self, state)()
+            state = state_transitions[(state, symbol)]
+
+        self.botconn.disconnect()
+
+    def _sys_pos(self):
+        err, x, y, speed, direction = self.botconn.sys_pos()
+        self.tick += 1
+        self.guesstimate_loc()
+        # TODO: error handling, altough sys_pos() should never fail
+
+        self.loc = x, y
+        self.speed = speed
+        self.direction = direction
+
+    def _move_to_center(self, speed):
+        center = (bottisota.ARENA_WIDTH // 2, bottisota.ARENA_HEIGHT // 2)
+        direction = bottisota.math.direction(self.loc, center)
+
+        self.botconn.sys_drv(speed, direction)
+        self.tick += 1
+        self.guesstimate_loc()
+        return ""
+
+    def _scan(self):
+        err, self.enemy_distance = self.botconn.sys_scn(self.scn_direction, self.scn_resolution)
+        self.tick += 1
+        self.guesstimate_loc()
+
+        if self.enemy_distance:
+            self.enemy_direction = self.scn_direction
+            self.guesstimate_enemy_loc()
+            return "ACK"
+
+        self.enemy_direction = None
+        return "NACK"
+
+    def sync(self):
+        self.botconn.sys_clk()
+        self.tick += 1
+        return ""
+
+    def move_to_center_fast(self):
+        return self._move_to_center(bottisota.DRV_SPEED_MAX)
+
+    def move_to_center_slowly(self):
+        return self._move_to_center(max(self.speed // 2, 1))
+
+    def stop(self):
+        self.botconn.sys_drv(0, self.direction)
+        self.tick += 1
+        self.guesstimate_loc()
+        self._sys_pos()
+
+        return ""
+
+    def find_center(self):
+        center = (bottisota.ARENA_WIDTH // 2, bottisota.ARENA_HEIGHT // 2)
+        self._sys_pos()
+
+        center_distance = bottisota.math.distance(self.loc, center)
+
+        if center_distance < 5:
+            return "CLOSE_ENOUGH"
+
+        if center_distance < 5 * self.speed:
+            return "NEARBY"
+
+        return "FARAWAY"
+
+    def scan_wide(self):
+        self.scn_resolution = bottisota.SCN_RESOLUTION_MAX
+        return self._scan()
+
+    def change_scan_sector(self):
+        self.scn_direction = (self.scn_direction + bottisota.SCN_RESOLUTION_MAX * 2) % 360
+        return ""
+
+    def narrow_scan_sector(self):
+        self.scn_resolution = max(2, self.scn_resolution // 2)
+
+        if self.scn_resolution == 2:
+            return "MIN"
+
+        return ""
+
+    def scan_sector(self):
+        return self._scan()
+
+    def scan_left_sector(self):
+        self.scn_direction = (self.scn_direction - 2 * self.scn_resolution) % 360
+        return self._scan()
+
+    def scan_right_sector(self):
+        self.scn_direction = (self.scn_direction + 4 * self.scn_resolution) % 360
+        return self._scan()
+
+    def widen_scan_sector(self):
+        self.scn_resolution = min(bottisota.SCN_RESOLUTION_MAX, self.scn_resolution * 2)
+
+        if self.scn_resolution == bottisota.SCN_RESOLUTION_MAX:
+            return "MAX"
+
+        return ""
+
+    def eval_enemy_motion(self):
+        last_enemy_distance = self.enemy_distance
+        last_enemy_direction = self.enemy_direction
+        last_enemy_loc = self.enemy_loc
+        if self._scan() == "ACK":
+            self.enemy_speed = round(bottisota.math.distance(last_enemy_loc, self.enemy_loc))
+            self.enemy_heading = bottisota.math.direction(last_enemy_loc, self.enemy_loc)
+            if last_enemy_distance >= self.enemy_distance:
+                return "APPROACHING"
+
+            return "DISTANCING"
+
+        return "NACK"
+
+    def standby_and_shoot(self):
+        msl_distance = self.enemy_distance - 2 * self.enemy_speed
+        if msl_distance > 10:
+            self.botconn.sys_msl(self.enemy_direction, msl_distance)
+            self.tick += 1
+            self.guesstimate_loc()
+        self.botconn.sys_drv(0, self.enemy_direction)
+        self.tick += 1
+        self.guesstimate_loc()
+        return ""
+
+    def guesstimate_loc(self):
+        if self.loc is not None:
+            x, y = self.loc
+            self.loc = bottisota.math.travel(x, y, self.direction, self.speed)
+
+    def guesstimate_enemy_loc(self):
+        if self.loc is not None:
+            x, y = self.loc
+            self.enemy_loc = bottisota.math.travel(x, y, self.enemy_direction, self.enemy_distance)
+
+    def follow_and_shoot(self):
+        self.botconn.sys_msl(self.enemy_direction, self.enemy_distance + 2 * self.enemy_speed)
+        self.tick += 1
+        self.guesstimate_loc()
+        self.botconn.sys_drv(bottisota.DRV_SPEED_MAX, self.enemy_direction)
+        self.tick += 1
+        self.guesstimate_loc()
+        return ""
+
+bot = Bot()
+
+states = (
+    ("sync"                 , ""            , "find_center"          ),
+    ("find_center"          , "FARAWAY"     , "move_to_center_fast"  ),
+    ("move_to_center_fast"  , ""            , "find_center"          ),
+    ("find_center"          , "CLOSE_ENOUGH", "stop"                 ),
+    ("find_center"          , "NEARBY"      , "move_to_center_slowly"),
+    ("move_to_center_slowly", ""            , "find_center"          ),
+    ("stop"                 , ""            , "scan_wide"            ),
+    ("scan_wide"            , "ACK"         , "narrow_scan_sector"   ),
+    ("narrow_scan_sector"   , ""            , "scan_sector"          ),
+    ("narrow_scan_sector"   , "MIN"         , "eval_enemy_motion"    ),
+    ("eval_enemy_motion"    , "APPROACHING" , "standby_and_shoot"    ),
+    ("eval_enemy_motion"    , "DISTANCING"  , "follow_and_shoot"     ),
+    ("standby_and_shoot"    , ""            , "eval_enemy_motion"    ),
+    ("follow_and_shoot"     , ""            , "eval_enemy_motion"    ),
+    ("eval_enemy_motion"    , "NACK"        , "scan_sector"          ),
+    ("scan_sector"          , "ACK"         , "narrow_scan_sector"   ),
+    ("scan_sector"          , "NACK"        , "scan_left_sector"     ),
+    ("scan_left_sector"     , "NACK"        , "scan_right_sector"    ),
+    ("scan_left_sector"     , "ACK"         , "narrow_scan_sector"   ),
+    ("scan_right_sector"    , "NACK"        , "widen_scan_sector"    ),
+    ("scan_right_sector"    , "ACK"         , "narrow_scan_sector"   ),
+    ("widen_scan_sector"    , ""            , "scan_sector"          ),
+    ("widen_scan_sector"    , "MAX"         , "stop"                 ),
+    ("scan_wide"            , "NACK"        , "change_scan_sector"   ),
+    ("change_scan_sector"   , ""            , "scan_wide"            ),
+)
+
+bot.fsm(states)

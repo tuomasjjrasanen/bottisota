@@ -48,6 +48,59 @@ class Clock:
 
 CLOCK = Clock()
 
+class Missile:
+
+    next_idnum = 1
+
+    def __init__(self, loc, speed, direction, distance):
+        self.idnum = Missile.next_idnum
+        Missile.next_idnum += 1
+        self.ticks_since_last_update = 1
+        self.x, self.y = loc
+        self.direction = direction % 360
+        self.distance_remaining = distance
+        self.speed = speed
+        self.next_speed = bottisota.MSL_SPEED
+
+    @property
+    def loc(self):
+        return (self.x, self.y)
+
+    def update_position(self):
+        distance = min(self.distance_remaining, self.speed * self.ticks_since_last_update)
+        self.distance_remaining = max(0, self.distance_remaining - distance)
+        direction_rad = math.radians(self.direction)
+        dy = int(round(math.sin(direction_rad) * distance))
+        dx = int(round(math.cos(direction_rad) * distance))
+        if dx or dy:
+            new_x, new_y = (self.x + dx, self.y + dy)
+            if new_x < 0 or new_x > bottisota.ARENA_WIDTH or new_y < 0 or new_y > bottisota.ARENA_HEIGHT:
+                new_x = min(max(new_x, 0), bottisota.ARENA_WIDTH)
+                new_y = min(max(new_y, 0), bottisota.ARENA_HEIGHT)
+                self.next_speed = bottisota.DRV_SPEED_MIN
+                self.distance_remaining = 0
+            self.x = new_x
+            self.y = new_y
+
+        self.speed = self.next_speed
+
+    def damage(self, target_bot):
+        if self.distance_remaining:
+            # Still flying.
+            return
+        if bottisota.math.distance(self.loc, target_bot.loc) < 10:
+            damage = 10
+            target_bot.add_damage(damage)
+
+    def is_scrap(self):
+        return not self.distance_remaining
+
+    def log_status(self):
+        if not self.distance_remaining:
+            battle_logger.info("missile %d exploded at %d, %d", self.idnum, self.x, self.y)
+        else:
+            battle_logger.info("missile %d at %d, %d, direction to %d, speed %d", self.idnum, self.x, self.y, self.direction, self.speed)
+
 class Controller:
 
     def __init__(self, sock, idnum):
@@ -55,14 +108,15 @@ class Controller:
         self.__syscall = None
         self.__ticks_since_last_update = 1
         self.__err = None
-        self.__idnum = idnum
         self.bot = Bot(idnum)
+        self.missiles = []
 
         self.__read_syscall_methods = {
             bottisota.protocol.SYSCALL_POS_FUN: self.__read_syscall_pos,
             bottisota.protocol.SYSCALL_CLK_FUN: self.__read_syscall_clk,
             bottisota.protocol.SYSCALL_DRV_FUN: self.__read_syscall_drv,
             bottisota.protocol.SYSCALL_SCN_FUN: self.__read_syscall_scn,
+            bottisota.protocol.SYSCALL_MSL_FUN: self.__read_syscall_msl,
         }
 
         self.__return_syscall_methods = {
@@ -70,6 +124,7 @@ class Controller:
             bottisota.protocol.SYSCALL_CLK_FUN: self.__return_syscall_clk,
             bottisota.protocol.SYSCALL_DRV_FUN: self.__return_syscall_drv,
             bottisota.protocol.SYSCALL_SCN_FUN: self.__return_syscall_scn,
+            bottisota.protocol.SYSCALL_MSL_FUN: self.__return_syscall_msl,
         }
 
     def shutdown(self):
@@ -101,6 +156,15 @@ class Controller:
             self.bot.scn_distance = 0
             self.bot.scn_on = True
 
+    def __read_syscall_msl(self):
+        direction, distance = self.__syscall[1]
+        if distance > bottisota.MSL_DISTANCE_MAX:
+            self.__err = bottisota.protocol.ERR_BADARG
+        else:
+            self.__err = bottisota.protocol.ERR_OK
+            missile = self.bot.launch_missile(direction, distance)
+            self.missiles.append(missile)
+
     def read_syscall(self):
         self.__syscall = self.__conn.recv(False)
 
@@ -128,6 +192,9 @@ class Controller:
 
         return scn_distance,
 
+    def __return_syscall_msl(self):
+        return ()
+
     def return_syscall(self):
         if self.__syscall:
             return_values = self.__return_syscall_methods[self.__syscall[0]]()
@@ -135,7 +202,20 @@ class Controller:
             self.__syscall = None
 
     def log_status(self):
+        for missile in self.missiles:
+            missile.log_status()
+
         self.bot.log_status()
+
+    def remove_scrap(self):
+        scrap_missiles = []
+
+        for missile in self.missiles:
+            if missile.is_scrap():
+                scrap_missiles.append(missile)
+
+        for scrap_missile in scrap_missiles:
+            self.missiles.remove(scrap_missile)
 
 class Bot:
 
@@ -198,6 +278,20 @@ class Bot:
         if self.scn_on:
             battle_logger.info("bot %d scanning direction %d±%d", self.idnum, self.scn_direction, self.scn_resolution)
 
+        if self.damage >= 100:
+            battle_logger.info("bot %d destroyed", self.idnum)
+
+    def launch_missile(self, direction, distance):
+        missile = Missile(self.loc, self.speed, direction, distance)
+        missile.log_status()
+        return missile
+
+    def is_scrap(self):
+        return self.damage >= 100
+
+    def add_damage(self, damage):
+        self.damage += damage
+
 class Battle:
 
     def __init__(self):
@@ -227,6 +321,7 @@ class Battle:
                 self.__update()
                 self.__log_status()
                 self.__return_syscalls()
+                self.__remove_scrap()
 
         finally:
             battle_logger.info("end")
@@ -242,17 +337,39 @@ class Battle:
             if first_error:
                 raise first_error
 
+    def iter_bots(self):
+        for controller in self.__controllers:
+            yield controller.bot
+
+    def iter_missiles(self):
+        for controller in self.__controllers:
+            for missile in controller.missiles:
+                yield missile
+
     def __update_positions(self):
         # TODO: dynamic collision detection
-        for controller in self.__controllers:
-            controller.bot.update_position()
+        for bot in self.iter_bots():
+            bot.update_position()
+
+        for missile in self.iter_missiles():
+            missile.update_position()
+
+    def __update_damages(self):
+        for missile in self.iter_missiles():
+            for bot in self.iter_bots():
+                missile.damage(bot)
 
     def __update_scans(self):
-        for scanning_bot, scanned_bot in itertools.permutations([c.bot for c in self.__controllers], 2):
+        for scanning_bot, scanned_bot in itertools.permutations(self.iter_bots(), 2):
             scanning_bot.update_scan(scanned_bot)
+
+    def __remove_scrap(self):
+        for controller in self.__controllers:
+            controller.remove_scrap()
 
     def __update(self):
         self.__update_positions()
+        self.__update_damages()
         self.__update_scans()
 
     def __log_status(self):
