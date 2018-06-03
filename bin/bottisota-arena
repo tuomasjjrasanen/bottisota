@@ -48,24 +48,15 @@ class Clock:
 
 CLOCK = Clock()
 
-class Bot:
+class Controller:
 
-    def __init__(self, sock, idnum, loc, direction):
+    def __init__(self, sock, idnum):
         self.__conn = bottisota.bus.ArenaConnection(sock)
         self.__syscall = None
         self.__ticks_since_last_update = 1
         self.__err = None
-
         self.__idnum = idnum
-        self.__x, self.__y = loc
-        self.__direction = direction
-        self.__speed = bottisota.DRV_SPEED_MIN
-        self.__damage = bottisota.DAMAGE_MIN
-
-        self.__scn_direction = 0
-        self.__scn_resolution = 0
-        self.__scn_distance = 0
-        self.__scn_on = False
+        self.bot = Bot(idnum)
 
         self.__read_syscall_methods = {
             bottisota.protocol.SYSCALL_POS_FUN: self.__read_syscall_pos,
@@ -80,22 +71,6 @@ class Bot:
             bottisota.protocol.SYSCALL_DRV_FUN: self.__return_syscall_drv,
             bottisota.protocol.SYSCALL_SCN_FUN: self.__return_syscall_scn,
         }
-
-    @property
-    def idnum(self):
-        return self.__idnum
-
-    @property
-    def loc(self):
-        return (self.__x, self.__y)
-
-    @property
-    def direction(self):
-        return self.__direction
-
-    @property
-    def speed(self):
-        return self.__speed
 
     def shutdown(self):
         self.__conn.disconnect()
@@ -112,8 +87,8 @@ class Bot:
             self.__err = bottisota.protocol.ERR_BADARG
         else:
             self.__err = bottisota.protocol.ERR_OK
-            self.__speed = speed
-            self.__direction = direction % 360
+            self.bot.speed = speed
+            self.bot.direction = direction % 360
 
     def __read_syscall_scn(self):
         direction, resolution = self.__syscall[1]
@@ -121,10 +96,10 @@ class Bot:
             self.__err = bottisota.protocol.ERR_BADARG
         else:
             self.__err = bottisota.protocol.ERR_OK
-            self.__scn_direction = direction % 360
-            self.__scn_resolution = resolution
-            self.__scn_distance = 0
-            self.__scn_on = True
+            self.bot.scn_direction = direction % 360
+            self.bot.scn_resolution = resolution
+            self.bot.scn_distance = 0
+            self.bot.scn_on = True
 
     def read_syscall(self):
         self.__syscall = self.__conn.recv(False)
@@ -133,7 +108,7 @@ class Bot:
         self.__read_syscall_methods[self.__syscall[0]]()
 
     def __return_syscall_pos(self):
-        return self.__x, self.__y, self.__speed, self.__direction
+        return self.bot.pos
 
     def __return_syscall_clk(self):
         return CLOCK.now(),
@@ -142,11 +117,11 @@ class Bot:
         return self.__err,
 
     def __return_syscall_scn(self):
-        scn_distance = self.__scn_distance
-        self.__scn_distance = 0
-        self.__scn_resolution = 0
-        self.__scn_direction = 0
-        self.__scn_on = False
+        scn_distance = self.bot.scn_distance
+        self.bot.scn_distance = 0
+        self.bot.scn_resolution = 0
+        self.bot.scn_direction = 0
+        self.bot.scn_on = False
 
         return scn_distance,
 
@@ -155,22 +130,51 @@ class Bot:
         self.__conn.send(self.__syscall[0].replace("?", "="), self.__err, *return_values)
         self.__syscall = None
 
+    def log_status(self):
+        self.bot.log_status()
+
+class Bot:
+
+    def __init__(self, idnum):
+        loc, direction = randpos()
+
+        self.idnum = idnum
+        self.x, self.y = loc
+        self.direction = direction
+        self.speed = bottisota.DRV_SPEED_MIN
+        self.damage = bottisota.DAMAGE_MIN
+
+        self.scn_direction = 0
+        self.scn_resolution = 0
+        self.scn_distance = 0
+        self.scn_on = False
+
+        self.ticks_since_last_update = 1
+
+    @property
+    def loc(self):
+        return (self.x, self.y)
+
+    @property
+    def pos(self):
+        return self.x, self.y, self.speed, self.direction
+
     def update_position(self):
-        distance = self.__speed * self.__ticks_since_last_update
-        direction_rad = math.radians(self.__direction)
+        distance = self.speed * self.ticks_since_last_update
+        direction_rad = math.radians(self.direction)
         dy = int(round(math.sin(direction_rad) * distance))
         dx = int(round(math.cos(direction_rad) * distance))
         if dx or dy:
-            new_x, new_y = (self.__x + dx, self.__y + dy)
+            new_x, new_y = (self.x + dx, self.y + dy)
             if new_x < 0 or new_x > bottisota.ARENA_WIDTH or new_y < 0 or new_y > bottisota.ARENA_HEIGHT:
                 new_x = min(max(new_x, 0), bottisota.ARENA_WIDTH)
                 new_y = min(max(new_y, 0), bottisota.ARENA_HEIGHT)
-                self.__speed = bottisota.DRV_SPEED_MIN
-            self.__x = new_x
-            self.__y = new_y
+                self.speed = bottisota.DRV_SPEED_MIN
+            self.x = new_x
+            self.y = new_y
 
     def update_scan(self, target):
-        if self.__syscall[0] != bottisota.protocol.SYSCALL_SCN_FUN:
+        if not self.scn_on:
             return
 
         target_distance = bottisota.math.distance(self.loc, target.loc)
@@ -178,46 +182,42 @@ class Bot:
             return
 
         target_direction = bottisota.math.direction(self.loc, target.loc)
-        left_bound = (self.__scn_direction - self.__scn_resolution) % 360
-        right_bound = (self.__scn_direction + self.__scn_resolution) % 360
+        left_bound = (self.scn_direction - self.scn_resolution) % 360
+        right_bound = (self.scn_direction + self.scn_resolution) % 360
         if left_bound <= target_direction <= right_bound:
-            distance_min = max(target_distance - bottisota.SCN_ERROR_PER_RESOLUTION * self.__scn_resolution, 0)
-            distance_max = min(target_distance + bottisota.SCN_ERROR_PER_RESOLUTION * self.__scn_resolution, bottisota.SCN_DISTANCE)
-            self.__scn_distance = random.randint(round(distance_min), round(distance_max))
+            distance_min = max(target_distance - bottisota.SCN_ERROR_PER_RESOLUTION * self.scn_resolution, 0)
+            distance_max = min(target_distance + bottisota.SCN_ERROR_PER_RESOLUTION * self.scn_resolution, bottisota.SCN_DISTANCE)
+            self.scn_distance = random.randint(round(distance_min), round(distance_max))
 
     def log_status(self):
-        battle_logger.info("bot %d at %d, %d, direction to %d, speed %d, damage %d", self.__idnum, self.__x, self.__y, self.__direction, self.__speed, self.__damage)
-        if self.__scn_on:
-            battle_logger.info("bot %d scanning direction %d±%d", self.__idnum, self.__scn_direction, self.__scn_resolution)
+        battle_logger.info("bot %d at %d, %d, direction to %d, speed %d, damage %d", self.idnum, self.x, self.y, self.direction, self.speed, self.damage)
+        if self.scn_on:
+            battle_logger.info("bot %d scanning direction %d±%d", self.idnum, self.scn_direction, self.scn_resolution)
 
 class Battle:
 
     def __init__(self):
-        self.__bots = []
+        self.__controllers = []
         self.__is_on = True
 
-    def wait_for_bot(self, arenasock):
-        botsock = arenasock.accept()[0]
-        idnum = len(self.__bots) + 1
+    def wait_for_controller(self, arenasock):
+        controllersock = arenasock.accept()[0]
+        idnum = len(self.__controllers) + 1
 
         logger.info("connection %d established", idnum)
 
-        loc, direction = randpos()
-        while loc in [b.loc for b in self.__bots]:
-            loc, direction = randpos()
-
-        bot = Bot(botsock, idnum, loc, direction)
-        self.__bots.append(bot)
-        bot.log_status()
+        controller = Controller(controllersock, idnum)
+        self.__controllers.append(controller)
+        controller.log_status()
 
     def stop(self, signum, stack_frame):
         self.__is_on = False
 
     def play(self):
-        initial_bot_count = len(self.__bots)
+        initial_controller_count = len(self.__controllers)
         battle_logger.info("begin")
         try:
-            while len(self.__bots) == initial_bot_count and self.__is_on:
+            while len(self.__controllers) == initial_controller_count and self.__is_on:
                 CLOCK.tick()
                 self.__read_syscalls()
                 self.__update()
@@ -227,10 +227,10 @@ class Battle:
         finally:
             battle_logger.info("end")
             first_error = sys.exc_info()[1]
-            while self.__bots:
-                bot = self.__bots.pop()
+            while self.__controllers:
+                controller = self.__controllers.pop()
                 try:
-                    bot.shutdown()
+                    controller.shutdown()
                 except Exception as e:
                     first_error = first_error or e
                     continue
@@ -240,11 +240,11 @@ class Battle:
 
     def __update_positions(self):
         # TODO: dynamic collision detection
-        for bot in self.__bots:
-            bot.update_position()
+        for controller in self.__controllers:
+            controller.bot.update_position()
 
     def __update_scans(self):
-        for scanning_bot, scanned_bot in itertools.permutations(self.__bots, 2):
+        for scanning_bot, scanned_bot in itertools.permutations([c.bot for c in self.__controllers], 2):
             scanning_bot.update_scan(scanned_bot)
 
     def __update(self):
@@ -252,30 +252,30 @@ class Battle:
         self.__update_scans()
 
     def __log_status(self):
-        for bot in self.__bots:
-            bot.log_status()
+        for controller in self.__controllers:
+            controller.log_status()
 
     def __read_syscalls(self):
-        failed_bots = []
+        failed_controllers = []
 
-        for bot in self.__bots:
+        for controller in self.__controllers:
             try:
-                bot.read_syscall()
+                controller.read_syscall()
             except:
-                logger.exception("failed to read a syscall from a bot")
-                failed_bots.append(bot)
+                logger.exception("failed to read a syscall from a controller")
+                failed_controllers.append(controller)
 
-        for failed_bot in failed_bots:
-            self.__bots.remove(failed_bot)
+        for failed_controller in failed_controllers:
+            self.__controllers.remove(failed_controller)
             try:
-                failed_bot.shutdown()
+                failed_controller.shutdown()
             except:
-                logger.exception("failed to shutdown a failed bot")
+                logger.exception("failed to shutdown a failed controller")
                 continue
 
     def __return_syscalls(self):
-        for bot in self.__bots:
-            bot.return_syscall()
+        for controller in self.__controllers:
+            controller.return_syscall()
 
 class Arena:
 
@@ -328,8 +328,8 @@ class Arena:
 
         battle_logger.info("init")
 
-        battle.wait_for_bot(self.__sock)
-        battle.wait_for_bot(self.__sock)
+        battle.wait_for_controller(self.__sock)
+        battle.wait_for_controller(self.__sock)
 
         signal.signal(signal.SIGUSR1, battle.stop)
         signal.signal(signal.SIGUSR2, battle.stop)
