@@ -16,20 +16,6 @@ ERR_BADARG = 2
 _CALLER_ARENA = "ARENA"
 _CALLER_BOT = "BOT"
 
-_SYSCALL_ARG_FORMATS = {
-    SYSCALL_CLK_FUN: "",
-    SYSCALL_CLK_RET: " {} {}",
-    SYSCALL_DRV_FUN: " {} {}",
-    SYSCALL_DRV_RET: " {}",
-    SYSCALL_POS_FUN: "",
-    SYSCALL_POS_RET: " {} {} {} {} {}",
-    SYSCALL_SCN_FUN: " {} {}",
-    SYSCALL_SCN_RET: " {} {}",
-}
-
-def format_syscall(syscall, *args):
-    return "{}{}\n".format(syscall, _SYSCALL_ARG_FORMATS[syscall].format(*args))
-
 class _Stack:
 
     def __init__(self, send_caller, recv_caller):

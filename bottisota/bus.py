@@ -40,8 +40,8 @@ class _Connection:
         finally:
             self.__sock.setblocking(True)
 
-    def send(self, syscall, *args):
-        line = bottisota.protocol.format_syscall(syscall, *args)
+    def send(self, *args):
+        line = "{}\n".format(" ".join([str(v) for v in args]))
         self.__protocol_stack.send(line)
         self.__sockfile.write(line)
         self.__sockfile.flush()
