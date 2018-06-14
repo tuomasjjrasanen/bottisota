@@ -114,7 +114,7 @@ class Controller:
         return CLOCK.now(),
 
     def __return_syscall_drv(self):
-        return self.__err,
+        return ()
 
     def __return_syscall_scn(self):
         scn_distance = self.bot.scn_distance
