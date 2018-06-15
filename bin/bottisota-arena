@@ -103,8 +103,11 @@ class Controller:
 
     def read_syscall(self):
         self.__syscall = self.__conn.recv(False)
-        self.__err = bottisota.protocol.ERR_UNKNOWN
 
+        if not self.__syscall:
+            return
+
+        self.__err = bottisota.protocol.ERR_UNKNOWN
         self.__read_syscall_methods[self.__syscall[0]]()
 
     def __return_syscall_pos(self):
@@ -126,9 +129,10 @@ class Controller:
         return scn_distance,
 
     def return_syscall(self):
-        return_values = self.__return_syscall_methods[self.__syscall[0]]()
-        self.__conn.send(self.__syscall[0].replace("?", "="), self.__err, *return_values)
-        self.__syscall = None
+        if self.__syscall:
+            return_values = self.__return_syscall_methods[self.__syscall[0]]()
+            self.__conn.send(self.__syscall[0].replace("?", "="), self.__err, *return_values)
+            self.__syscall = None
 
     def log_status(self):
         self.bot.log_status()

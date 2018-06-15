@@ -36,6 +36,10 @@ class _Connection:
         try:
             self.__sock.setblocking(blocking)
             line = self.__sockfile.readline()
+
+            if not line:
+                return None
+
             return self.__protocol_stack.recv(line)
         finally:
             self.__sock.setblocking(True)
