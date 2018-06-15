@@ -11,6 +11,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
 import bottisota.bus
+import bottisota.sprites
 
 class ZoomableGraphicsView(QGraphicsView):
 
@@ -96,6 +97,53 @@ class GraphicsBotItem(QGraphicsPolygonItem):
         if self.__beam is not None:
             self.__beam.hide()
 
+class GraphicsExplosionItem(QGraphicsItem):
+
+    FPS = 48
+
+    def __init__(self, pos, parent=None):
+        QGraphicsItem.__init__(self, parent)
+        self.setPos(pos)
+
+        sprite_name = "explosion_128_128_8_5"
+
+        (self.__sprite_width,
+         self.__sprite_height,
+         self.__x_frames,
+         self.__y_frames) = [int(v) for v in sprite_name.split("_")[1:]]
+        self.__x = -self.__sprite_width // 2
+        self.__y = -self.__sprite_height // 2
+
+        self.__pixmap = QPixmap(":sprites/%s" % sprite_name)
+
+        self.__frame = 0
+
+        self.__boundingRect = QRectF(self.__x, self.__y,
+                                     self.__sprite_width, self.__sprite_height)
+
+        self.__timer = QTimer()
+        self.__timer.setTimerType(Qt.PreciseTimer)
+        self.__timer.timeout.connect(self.__nextFrame)
+        self.__timer.start(1000 // GraphicsExplosionItem.FPS)
+
+    def __nextFrame(self):
+        self.__frame += 1
+        self.update(self.__boundingRect)
+
+        if self.__frame >= 40:
+            self.__timer.stop()
+            self.hide()
+            self.scene().removeItem(self)
+
+    def boundingRect(self):
+        return self.__boundingRect
+
+    def paint(self, painter, option, widget):
+        painter.drawPixmap(self.__x, self.__y, self.__pixmap,
+                           self.__frame // self.__x_frames * self.__sprite_width,
+                           self.__frame // self.__y_frames * self.__sprite_height,
+                           self.__sprite_width, self.__sprite_height)
+
 class GraphicsMissileItem(QGraphicsPolygonItem):
 
     def __init__(self, parent=None):
@@ -123,6 +171,7 @@ class GraphicsMissileItem(QGraphicsPolygonItem):
 
     def explode(self):
         self.hide()
+        self.scene().addItem(GraphicsExplosionItem(self.pos()))
         self.scene().removeItem(self)
 
     def advance(self, phase):
