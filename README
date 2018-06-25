@@ -1,8 +1,9 @@
 = Bottisota
 
-Bottisota is a programming game where players program battle bot
-controller. All bots are physically identical, it's the controller
-logic which makes all the difference.
+Bottisota is a programming game where players compete against each
+other by programming controllers (AIs) of battle bots. All bots are
+physically identical, it's the controller logic which makes all the
+difference.
 
 Bottisota is a finnish compound word and it literally means bot war
 (bot == botti, war == sota).
@@ -12,36 +13,111 @@ Similar projects:
 * TclRobots
 * Realtime battle
 
+What distinguishes Bottisota from similar projets is that it's written
+in Python 3, but its bot controller API is language-independent; bot
+controllers attach to the game server via sockets and the
+communication adheres to a simple line-oriented text protocol.
+
+== Build and install
+
+Simply just run:
+  python3 setup.py install --user
+
 == Entities
 
 The world of Bottisota consists of following entities:
 
 * Arena
 * Bots
+* Missiles
 
 === Arena
 
-Arena is the 2D space where all the action takes place.
+Arena is 2D space where all the action takes place. It has following
+attributes:
+
+* width: integer, {1..}
+* height: integer, {1..}
+
+It defines the cartesian coordinate space where all the other
+Bottisota entities exist. The top-left coordinate is always (0, 0) and
+the bottom right is (width - 1, height - 1). Arena is bounded by
+impenetrable walls.
+
+=== Missile
+
+Missiles are launched by bots. They are always launched to a certain
+direction with a certain range. The maximum range of a missile is 350
+distance units. They travel at constant speed of 60 distance units per
+tick.
+
+Missiles inflict damage by exploding. They explode when they hit any
+surface (ground, bot or arena boundary).
+
+* x coordinate: interger, {0..499}
+* y coordinate: interger, {0..499}
+* direction: integer, {0..359}
+* speed: integer, 60
+* range: integer, {0..350}
+
+The amount of damage dealt by a missile to a bot is a function of
+explosion distance and is defined as follows:
+
+  damage(>= 40)	      = 0
+  damage(== 0)        = 25
+  damage(distance)    = min(25, floor(1 / (distance / 150)))
+
+Example 1: A direct hit (when the distance from a bot to an exploding
+misile is zero) causes 25 points of damage.
+
+Example 2: An explosion 5 distance units away from a bot causes 25
+points of damage.
+
+Example 3: An explosion 10 distance units away from a bot causes 15
+points of damage.
+
+Example 4: An explosion 42 distance units away from a bot causes 0
+points of damage.
 
 === Bot
 
 A bot is a mobile programmable weapon platform with following
 attributes:
 
-* x coordinate: integer
-* y coordinate: integer
-* direction: integer
-* speed: integer
-* health: integer
+* x coordinate: integer, {0..499}
+* y coordinate: integer, {0..499}
+* direction: integer, {0..359}
+* speed: integer, {0..10}
+* health: integer, {0..100}
 
 ==== Bot Control Protocol
 
 Bot Control Protocol (BCP) is line-oriented request-response text
 protocol which defines how bots and controller programs can
-communicate with each other.
+communicate with each other. Lines are called messages and they must
+be terminated by a newline character '\n'. There are two different
+types of messages: requests and responses. Request message identifiers
+have '?'-suffix and response message identifiers have '='-suffix.
 
-+--------------------------+-----------------------------+
-|Request message           |Response message             |
+The general format of BCP messages is defined in BNF as follows:
+
+  <message>             ::= <message_id> <arguments>
+  <message_id>          ::= <request_message_id> | <response_message_id>
+  <request_message_id>  ::= <command> "?"
+  <response_message_id> ::= <command> "="
+  <command>             ::= <letter> | <letter> <command>
+  <letter>              ::= "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+  <arguments>           ::= "\n" | " " <integer> <arguments>
+  <integer>             ::= <digit> | <integer> <digit>
+  <digit>               ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+
+Table 1 lists all BCP messages.
+
++--------------------------------------------------------+
+|                 Table 1: BCP messages                  |
++==========================+=============================+
+|Request messages          |Response messages            |
 +==========================+=============================+
 |POS?                      |POS= err x y speed direction |
 +--------------------------+-----------------------------+
@@ -53,8 +129,3 @@ communicate with each other.
 +--------------------------+-----------------------------+
 |MSL? direction distance   |MSL= err                     |
 +--------------------------+-----------------------------+
-
-== Build and install
-
-Simply just run:
-  python3 setup.py install --user
