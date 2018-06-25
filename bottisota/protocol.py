@@ -25,7 +25,7 @@ class _Stack:
             (SYSCALL_CLK_FUN, r"^$"),
             (SYSCALL_CLK_RET, r"^([0-9]+) ([0-9]+)$", int, int),
             (SYSCALL_DRV_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
-            (SYSCALL_DRV_RET, r"^([0-9]+)$", int),
+            (SYSCALL_DRV_RET, r"^([0-9]+) ([0-9]+)$", int, int),
             (SYSCALL_POS_FUN, r"^$"),
             (SYSCALL_POS_RET, r"^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int, int, int),
             (SYSCALL_SCN_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
