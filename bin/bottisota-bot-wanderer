@@ -25,7 +25,7 @@ def move_to(botconn, destination):
             # Full speed ahead.
             speed = bottisota.DRV_SPEED_MAX
 
-        botconn.sys_drv(speed, direction)
+        botconn.sys_drv(direction, speed)
 
 def randloc():
     x = random.randint(0, bottisota.ARENA_WIDTH)

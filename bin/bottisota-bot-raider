@@ -52,7 +52,7 @@ class Bot:
         center = (bottisota.ARENA_WIDTH // 2, bottisota.ARENA_HEIGHT // 2)
         direction = bottisota.math.direction(self.loc, center)
 
-        self.botconn.sys_drv(speed, direction)
+        self.botconn.sys_drv(direction, speed)
         self.tick += 1
         self.guesstimate_loc()
         return ""
@@ -82,7 +82,7 @@ class Bot:
         return self._move_to_center(max(self.speed // 2, 1))
 
     def stop(self):
-        self.botconn.sys_drv(0, self.direction)
+        self.botconn.sys_drv(self.direction, 0)
         self.tick += 1
         self.guesstimate_loc()
         self._sys_pos()
@@ -158,7 +158,7 @@ class Bot:
             self.botconn.sys_msl(self.enemy_direction, msl_distance)
             self.tick += 1
             self.guesstimate_loc()
-        self.botconn.sys_drv(0, self.enemy_direction)
+        self.botconn.sys_drv(self.enemy_direction, 0)
         self.tick += 1
         self.guesstimate_loc()
         return ""
@@ -177,7 +177,7 @@ class Bot:
         self.botconn.sys_msl(self.enemy_direction, self.enemy_distance + 2 * self.enemy_speed)
         self.tick += 1
         self.guesstimate_loc()
-        self.botconn.sys_drv(bottisota.DRV_SPEED_MAX, self.enemy_direction)
+        self.botconn.sys_drv(self.enemy_direction, bottisota.DRV_SPEED_MAX)
         self.tick += 1
         self.guesstimate_loc()
         return ""

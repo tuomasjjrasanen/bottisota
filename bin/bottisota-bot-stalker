@@ -49,7 +49,7 @@ class Bot:
         center = (bottisota.ARENA_WIDTH // 2, bottisota.ARENA_HEIGHT // 2)
         direction = bottisota.math.direction(self.loc, center)
 
-        self.botconn.sys_drv(speed, direction)
+        self.botconn.sys_drv(direction, speed)
         return ""
 
     def _scan(self):
@@ -73,7 +73,7 @@ class Bot:
         return self._move_to_center(max(self.speed // 2, 1))
 
     def stop(self):
-        self.botconn.sys_drv(0, self.direction)
+        self.botconn.sys_drv(self.direction, 0)
         self._sys_pos()
 
         return ""
@@ -139,11 +139,11 @@ class Bot:
         return "NACK"
 
     def lurk(self):
-        self.botconn.sys_drv(0, self.enemy_direction)
+        self.botconn.sys_drv(self.enemy_direction, 0)
         return ""
 
     def follow(self):
-        self.botconn.sys_drv(bottisota.DRV_SPEED_MAX, self.enemy_direction)
+        self.botconn.sys_drv(self.enemy_direction, bottisota.DRV_SPEED_MAX)
         return ""
 
 bot = Bot()

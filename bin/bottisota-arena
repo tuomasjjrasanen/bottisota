@@ -137,7 +137,7 @@ class Controller:
         self.__err = bottisota.protocol.ERR_OK
 
     def __read_syscall_drv(self):
-        speed, direction = self.__syscall[1]
+        direction, speed = self.__syscall[1]
         if speed > bottisota.DRV_SPEED_MAX:
             self.__err = bottisota.protocol.ERR_BADARG
         else:

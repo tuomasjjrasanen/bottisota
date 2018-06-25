@@ -6,10 +6,10 @@ import bottisota.bus
 botconn = bottisota.bus.BotConnection()
 
 botconn.sys_clk()
-botconn.sys_drv(bottisota.DRV_SPEED_MAX, 270)
+botconn.sys_drv(270, bottisota.DRV_SPEED_MAX)
 while True:
     err, x, y, speed, direction = botconn.sys_pos()
     if speed == 0:
-        botconn.sys_drv(bottisota.DRV_SPEED_MAX, (direction + 90) % 360)
+        botconn.sys_drv((direction + 90) % 360, bottisota.DRV_SPEED_MAX)
 
 botconn.disconnect()

@@ -27,7 +27,7 @@ def move_to_center(botconn):
             # Full speed ahead.
             new_speed = bottisota.DRV_SPEED_MAX
 
-        botconn.sys_drv(new_speed, direction)
+        botconn.sys_drv(direction, new_speed)
 
         if new_speed == 0:
             break
