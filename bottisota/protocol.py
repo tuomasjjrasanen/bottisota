@@ -29,7 +29,7 @@ class _Stack:
             (SYSCALL_POS_FUN, r"^$"),
             (SYSCALL_POS_RET, r"^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int, int, int),
             (SYSCALL_SCN_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
-            (SYSCALL_SCN_RET, r"^([0-9]+) ([0-9]+)$", int, int),
+            (SYSCALL_SCN_RET, r"^([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int),
             (SYSCALL_MSL_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
             (SYSCALL_MSL_RET, r"^([0-9]+)$", int),
         )

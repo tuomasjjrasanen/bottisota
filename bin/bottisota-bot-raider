@@ -18,6 +18,7 @@ class Bot:
 
         self.enemy_direction = None
         self.enemy_distance = None
+        self.enemy_idnum = None
         self.enemy_speed = None
         self.enemy_loc = None
 
@@ -58,7 +59,7 @@ class Bot:
         return ""
 
     def _scan(self):
-        err, self.enemy_distance = self.botconn.sys_scn(self.scn_direction, self.scn_resolution)
+        err, self.enemy_distance, self.enemy_idnum = self.botconn.sys_scn(self.scn_direction, self.scn_resolution)
         self.tick += 1
         self.guesstimate_loc()
 

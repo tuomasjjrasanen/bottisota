@@ -44,7 +44,7 @@ scn_direction = 0
 scn_resolution = bottisota.SCN_RESOLUTION_MAX
 
 while True:
-    err, scn_distance = botconn.sys_scn(scn_direction, scn_resolution)
+    err, scn_distance, scn_idnum = botconn.sys_scn(scn_direction, scn_resolution)
     if scn_distance:
         scn_resolution //= 2
     elif scn_resolution == bottisota.SCN_RESOLUTION_MAX:

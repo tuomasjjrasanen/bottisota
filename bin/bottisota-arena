@@ -159,6 +159,7 @@ class Controller:
             self.bot.scn_direction = direction % 360
             self.bot.scn_resolution = resolution
             self.bot.scn_distance = 0
+            self.bot.scn_idnum = 0
             self.bot.scn_on = True
 
     def __read_syscall_msl(self):
@@ -190,12 +191,14 @@ class Controller:
 
     def __return_syscall_scn(self):
         scn_distance = self.bot.scn_distance
+        scn_idnum = self.bot.scn_idnum
         self.bot.scn_distance = 0
+        self.bot.scn_idnum = 0
         self.bot.scn_resolution = 0
         self.bot.scn_direction = 0
         self.bot.scn_on = False
 
-        return scn_distance,
+        return scn_distance, scn_idnum
 
     def __return_syscall_msl(self):
         return ()
@@ -236,6 +239,7 @@ class Bot:
         self.scn_direction = 0
         self.scn_resolution = 0
         self.scn_distance = 0
+        self.scn_idnum = 0
         self.scn_on = False
 
         self.ticks_since_last_update = 1
@@ -277,6 +281,7 @@ class Bot:
             distance_min = max(target_distance - bottisota.SCN_ERROR_PER_RESOLUTION * self.scn_resolution, 0)
             distance_max = min(target_distance + bottisota.SCN_ERROR_PER_RESOLUTION * self.scn_resolution, bottisota.SCN_DISTANCE)
             self.scn_distance = random.randint(round(distance_min), round(distance_max))
+            self.scn_idnum = target.idnum
 
     def log_status(self):
         battle_logger.info("bot %d at %d, %d, direction to %d, speed %d, damage %d", self.idnum, self.x, self.y, self.direction, self.speed, self.damage)
