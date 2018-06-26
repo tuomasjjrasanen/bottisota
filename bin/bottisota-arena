@@ -90,11 +90,11 @@ class Missile:
             return
 
         explosion_distance = bottisota.math.distance(self.loc, target_bot.loc)
-
-        if explosion_distance == 0:
-            damage = 32
+        if explosion_distance <= 4:
+            damage = 50
         else:
-            damage = math.floor(1 / (explosion_distance / 32))
+            damage = math.floor(200 * (1/2) ** math.log2(explosion_distance))
+
         target_bot.add_damage(damage)
 
     def is_scrap(self):
