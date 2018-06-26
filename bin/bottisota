@@ -55,13 +55,13 @@ class GraphicsBotItem(QGraphicsPolygonItem):
         self.setBrush(color)
 
     def setTargetPos(self, x, y):
-        dx = (x - self.x()) / 9
-        dy = (y - self.y()) / 9
+        dx = (x - self.x()) / 22
+        dy = (y - self.y()) / 22
 
-        xs = [self.x() + i * dx for i in range(9)]
+        xs = [self.x() + i * dx for i in range(22)]
         xs.append(x)
 
-        ys = [self.y() + i * dy for i in range(9)]
+        ys = [self.y() + i * dy for i in range(22)]
         ys.append(y)
 
         waypoints = list(zip(xs, ys))
@@ -99,8 +99,6 @@ class GraphicsBotItem(QGraphicsPolygonItem):
 
 class GraphicsExplosionItem(QGraphicsItem):
 
-    FPS = 48
-
     def __init__(self, pos, parent=None):
         QGraphicsItem.__init__(self, parent)
         self.setPos(pos)
@@ -121,17 +119,14 @@ class GraphicsExplosionItem(QGraphicsItem):
         self.__boundingRect = QRectF(self.__x, self.__y,
                                      self.__sprite_width, self.__sprite_height)
 
-        self.__timer = QTimer()
-        self.__timer.setTimerType(Qt.PreciseTimer)
-        self.__timer.timeout.connect(self.__nextFrame)
-        self.__timer.start(1000 // GraphicsExplosionItem.FPS)
+    def advance(self, phase):
+        if phase == 0:
+            return
 
-    def __nextFrame(self):
         self.__frame += 1
         self.update(self.__boundingRect)
 
         if self.__frame >= 40:
-            self.__timer.stop()
             self.hide()
             self.scene().removeItem(self)
 
@@ -151,18 +146,18 @@ class GraphicsMissileItem(QGraphicsPolygonItem):
         QGraphicsPolygonItem.__init__(self, polygon, parent)
 
         self.__waypoints = []
-        self.__is_exploded = False
+        self.__is_exploding = False
 
         self.setBrush(Qt.black)
 
     def setTargetPos(self, x, y):
-        dx = (x - self.x()) / 9
-        dy = (y - self.y()) / 9
+        dx = (x - self.x()) / 22
+        dy = (y - self.y()) / 22
 
-        xs = [self.x() + i * dx for i in range(9)]
+        xs = [self.x() + i * dx for i in range(22)]
         xs.append(x)
 
-        ys = [self.y() + i * dy for i in range(9)]
+        ys = [self.y() + i * dy for i in range(22)]
         ys.append(y)
 
         waypoints = list(zip(xs, ys))
@@ -170,9 +165,7 @@ class GraphicsMissileItem(QGraphicsPolygonItem):
         self.__waypoints.extend(waypoints)
 
     def explode(self):
-        self.hide()
-        self.scene().addItem(GraphicsExplosionItem(self.pos()))
-        self.scene().removeItem(self)
+        self.__is_exploding = True
 
     def advance(self, phase):
         if phase == 0:
@@ -181,6 +174,11 @@ class GraphicsMissileItem(QGraphicsPolygonItem):
         if self.__waypoints:
             x, y = self.__waypoints.pop()
             self.setPos(x, y)
+        elif self.__is_exploding:
+            self.__is_exploding = False
+            self.hide()
+            self.scene().addItem(GraphicsExplosionItem(self.pos()))
+            self.scene().removeItem(self)
 
 class ArenaWidget(QWidget):
 
@@ -217,10 +215,6 @@ class ArenaWidget(QWidget):
         missile.setRotation(direction)
 
         return missile
-
-    # def removeMissile(self, missile):
-    #     missile.hide()
-    #     self.__arenaGraphicsScene.removeItem(missile)
 
 class StatusWidget(QWidget):
 
@@ -391,7 +385,6 @@ class MainWindow(QMainWindow):
         while self.__missiles:
             missileid, missile = self.__missiles.popitem()
             missile.explode()
-            # self.__arenaWidget.removeMissile(missile)
 
         self.__arenaProcess = QProcess(self)
         self.__arenaProcess.started.connect(self.__battleBegun)
@@ -492,11 +485,11 @@ class MainWindow(QMainWindow):
                 if match:
                     missileid, x, y = [int(v) for v in match.groups()]
                     missile = self.__missiles.pop(missileid)
+                    missile.setTargetPos(x, y)
                     missile.explode()
-                    # self.__arenaWidget.removeMissile(missile)
 
                 if re.match(r'^begin$', log_entry):
-                    self.__timer.start(50)
+                    self.__timer.start(20)
                     continue
 
                 if re.match(r'^end$', log_entry):
