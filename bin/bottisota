@@ -218,6 +218,9 @@ class ArenaWidget(QWidget):
 
         return missile
 
+    def removeMissile(self, missile):
+        self.__arenaGraphicsScene.removeItem(missile)
+
 class StatusWidget(QWidget):
 
     def __init__(self, *args):
@@ -387,7 +390,7 @@ class MainWindow(QMainWindow):
 
         while self.__missiles:
             missileid, missile = self.__missiles.popitem()
-            missile.explode()
+            self.__arenaWidget.removeMissile(missile)
 
         timestamp = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
         battle_dir = os.path.join(os.path.expanduser("~/.local/share/bottisota/battles"), timestamp)
