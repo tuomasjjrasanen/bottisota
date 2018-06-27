@@ -8,7 +8,7 @@ import bottisota.bus
 
 def move_to(botconn, destination):
     while True:
-        err, x, y, speed, direction = botconn.sys_pos()
+        x, y, speed, direction = botconn.sys_pos()
         loc = x, y
 
         distance_to_destination = bottisota.math.distance(loc, destination)

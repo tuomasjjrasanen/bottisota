@@ -59,10 +59,9 @@ class Controller(BotStateMachine):
         self.enemy_loc = None
 
     def _sys_pos(self):
-        err, x, y, speed, direction = self.botconn.sys_pos()
+        x, y, speed, direction = self.botconn.sys_pos()
         self.tick += 1
         self._guesstimate_loc()
-        # TODO: error handling, altough sys_pos() should never fail
 
         self.loc = x, y
         self.speed = speed
@@ -77,7 +76,7 @@ class Controller(BotStateMachine):
         self._guesstimate_loc()
 
     def _scan(self):
-        err, self.enemy_distance, self.enemy_idnum = self.botconn.sys_scn(self.scn_direction, self.scn_resolution)
+        self.enemy_distance, self.enemy_idnum = self.botconn.sys_scn(self.scn_direction, self.scn_resolution)
         self.tick += 1
         self._guesstimate_loc()
 
@@ -103,7 +102,7 @@ class Controller(BotStateMachine):
 
     @BotStateMachine.state
     def sync(self):
-        err, self.tick = self.botconn.sys_clk()
+        self.tick = self.botconn.sys_clk()
 
         return ""
 

@@ -11,7 +11,7 @@ botconn.sys_clk()
 center = (bottisota.ARENA_WIDTH // 2, bottisota.ARENA_HEIGHT // 2)
 
 while True:
-    err, x, y, speed, direction = botconn.sys_pos()
+    x, y, speed, direction = botconn.sys_pos()
     loc = x, y
 
     center_distance = bottisota.math.distance(loc, center)

@@ -9,6 +9,14 @@ ADDRESS = "/tmp/bottisota.sock"
 class Error(Exception):
     pass
 
+class SyscallError(Error):
+
+    def __init__(self, err):
+        self.err = err
+
+    def __str__(self):
+        return "Syscall error %d" % self.err
+
 def _connect(address=ADDRESS):
     sock = socket.socket(socket.AF_UNIX)
     try:
@@ -65,7 +73,10 @@ class _Connection:
     def call(self, syscall, *args):
         self.send(syscall, *args)
         received_syscall, received_values = self.recv()
-        return received_values
+        err = received_values[0]
+        if err:
+            raise SyscallError(err)
+        return received_values[1:]
 
 class BotConnection(_Connection):
 
@@ -73,19 +84,23 @@ class BotConnection(_Connection):
         _Connection.__init__(self, _connect(), bottisota.protocol.BotStack())
 
     def sys_clk(self):
-        return self.call(bottisota.protocol.SYSCALL_CLK_FUN)
+        tick, = self.call(bottisota.protocol.SYSCALL_CLK_FUN)
+        return tick
 
     def sys_drv(self, direction, speed):
-        return self.call(bottisota.protocol.SYSCALL_DRV_FUN, direction, speed)
+        speed, = self.call(bottisota.protocol.SYSCALL_DRV_FUN, direction, speed)
+        return speed
 
     def sys_pos(self):
-        return self.call(bottisota.protocol.SYSCALL_POS_FUN)
+        x, y, direction, speed = self.call(bottisota.protocol.SYSCALL_POS_FUN)
+        return x, y, direction, speed
 
     def sys_scn(self, direction, resolution):
-        return self.call(bottisota.protocol.SYSCALL_SCN_FUN, direction, resolution)
+        distance, botid = self.call(bottisota.protocol.SYSCALL_SCN_FUN, direction, resolution)
+        return distance, botid
 
     def sys_msl(self, direction, distance):
-        return self.call(bottisota.protocol.SYSCALL_MSL_FUN, direction, distance)
+        self.call(bottisota.protocol.SYSCALL_MSL_FUN, direction, distance)
 
 class ArenaConnection(_Connection):
 

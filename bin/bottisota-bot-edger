@@ -8,7 +8,7 @@ botconn = bottisota.bus.BotConnection()
 botconn.sys_clk()
 botconn.sys_drv(270, bottisota.DRV_SPEED_MAX)
 while True:
-    err, x, y, speed, direction = botconn.sys_pos()
+    x, y, speed, direction = botconn.sys_pos()
     if speed == 0:
         botconn.sys_drv((direction + 90) % 360, bottisota.DRV_SPEED_MAX)
 
