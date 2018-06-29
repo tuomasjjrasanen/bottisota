@@ -27,7 +27,7 @@ dotfile=$(mktemp)
 # pngfile=$(mktemp)
 
 echo 'strict digraph states {' >"${dotfile}"
-sed -r -n 's/^[ ]*\((.+)[ ]*,[ ]*"(.*)"[ ]*,[ ]*(.+)[ ]*\)[ ]*,.*$/\1 -> \3 [label="\2"];/p' >>"${dotfile}"
+sed -r -n 's/^[\t ]*\(([a-z_]+)[\t ]*,[\t ]*"([A-Za-z_]*)"[\t ]*,[ ]*([a-z_]+)[\t ]*\)[\t ]*,.*$/\1 -> \3 [label="\2"];/p' >>"${dotfile}"
 echo '}' >>"${dotfile}"
 
 dot -Txlib "${dotfile}"
