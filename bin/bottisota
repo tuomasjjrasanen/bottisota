@@ -81,7 +81,7 @@ class GraphicsBotItem(QGraphicsPolygonItem):
     def showScanBeam(self, direction, resolution):
         if self.__beam is None:
             self.__beam = QGraphicsPathItem(self)
-            self.__beam.setBrush(QColor(255, 255, 0, 64))
+            self.__beam.setBrush(QColor(255, 255, 0, 32))
 
         path = QPainterPath()
         path.lineTo(-math.cos(math.radians(90 - resolution)) * bottisota.SCN_DISTANCE,
