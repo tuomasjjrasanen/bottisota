@@ -28,8 +28,8 @@ def move_to(botconn, destination):
         botconn.sys_drv(direction, speed)
 
 def randloc():
-    x = random.randint(0, bottisota.ARENA_WIDTH)
-    y = random.randint(0, bottisota.ARENA_HEIGHT)
+    x = random.randint(0, bottisota.ARENA_WIDTH - 1)
+    y = random.randint(0, bottisota.ARENA_HEIGHT - 1)
 
     return x, y
 

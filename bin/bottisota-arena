@@ -27,8 +27,8 @@ battle_logger = logging.getLogger("bottisota.battle")
 battle_logger.addHandler(logging.StreamHandler(sys.stdout))
 
 def randpos():
-    x = random.randint(0, bottisota.ARENA_WIDTH)
-    y = random.randint(0, bottisota.ARENA_HEIGHT)
+    x = random.randint(0, bottisota.ARENA_WIDTH - 1)
+    y = random.randint(0, bottisota.ARENA_HEIGHT - 1)
     direction = random.randint(0, 359)
 
     return (x, y), direction
@@ -74,9 +74,9 @@ class Missile:
         dx = int(round(math.cos(direction_rad) * distance))
         if dx or dy:
             new_x, new_y = (self.x + dx, self.y + dy)
-            if new_x < 0 or new_x > bottisota.ARENA_WIDTH or new_y < 0 or new_y > bottisota.ARENA_HEIGHT:
-                new_x = min(max(new_x, 0), bottisota.ARENA_WIDTH)
-                new_y = min(max(new_y, 0), bottisota.ARENA_HEIGHT)
+            if new_x < 0 or new_x >= bottisota.ARENA_WIDTH or new_y < 0 or new_y >= bottisota.ARENA_HEIGHT:
+                new_x = min(max(new_x, 0), bottisota.ARENA_WIDTH - 1)
+                new_y = min(max(new_y, 0), bottisota.ARENA_HEIGHT - 1)
                 self.next_speed = bottisota.DRV_SPEED_MIN
                 self.distance_remaining = 0
             self.x = new_x
@@ -259,9 +259,9 @@ class Bot:
         dx = int(round(math.cos(direction_rad) * distance))
         if dx or dy:
             new_x, new_y = (self.x + dx, self.y + dy)
-            if new_x < 0 or new_x > bottisota.ARENA_WIDTH or new_y < 0 or new_y > bottisota.ARENA_HEIGHT:
-                new_x = min(max(new_x, 0), bottisota.ARENA_WIDTH)
-                new_y = min(max(new_y, 0), bottisota.ARENA_HEIGHT)
+            if new_x < 0 or new_x >= bottisota.ARENA_WIDTH or new_y < 0 or new_y >= bottisota.ARENA_HEIGHT:
+                new_x = min(max(new_x, 0), bottisota.ARENA_WIDTH - 1)
+                new_y = min(max(new_y, 0), bottisota.ARENA_HEIGHT - 1)
                 self.speed = bottisota.DRV_SPEED_MIN
             self.x = new_x
             self.y = new_y

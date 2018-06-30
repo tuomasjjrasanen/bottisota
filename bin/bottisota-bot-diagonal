@@ -6,9 +6,9 @@ import bottisota.math
 
 CORNERS = (
     (0, 0),
-    (bottisota.ARENA_WIDTH, 0),
-    (bottisota.ARENA_WIDTH, bottisota.ARENA_HEIGHT),
-    (0, bottisota.ARENA_HEIGHT),
+    (bottisota.ARENA_WIDTH - 1, 0),
+    (bottisota.ARENA_WIDTH - 1, bottisota.ARENA_HEIGHT - 1),
+    (0, bottisota.ARENA_HEIGHT - 1),
 )
 
 botconn = bottisota.bus.BotConnection()
