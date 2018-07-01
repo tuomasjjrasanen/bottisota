@@ -99,6 +99,14 @@ class GraphicsBotItem(QGraphicsPolygonItem):
         if self.__beam is not None:
             self.__beam.hide()
 
+class GraphicsGhostItem(QGraphicsPolygonItem):
+
+    def __init__(self, color=Qt.red, parent=None):
+        polygon = QPolygonF([QPointF(-6.6, -5), QPointF(-6.6, 5), QPointF(13.4, 0)])
+        QGraphicsPolygonItem.__init__(self, polygon, parent)
+
+        self.setBrush(color)
+
 class GraphicsExplosionItem(QGraphicsItem):
 
     def __init__(self, pos, parent=None):
@@ -198,6 +206,17 @@ class ArenaWidget(QWidget):
         timer.timeout.connect(self.__arenaGraphicsScene.advance)
 
         layout.addWidget(self.__arenaGraphicsView)
+
+    def addGhost(self, x, y, direction, color):
+        bot = GraphicsGhostItem(color)
+        bot.setParentItem(self.__arenaRectItem)
+        bot.setPos(x, y)
+        bot.setRotation(direction)
+
+        return bot
+
+    def removeGhost(self, ghost):
+        self.__arenaGraphicsScene.removeItem(ghost)
 
     def addBot(self, x, y, direction, color):
         bot = GraphicsBotItem(color)
@@ -380,6 +399,7 @@ class MainWindow(QMainWindow):
         self.setMenuBar(menuBar)
 
         self.__bots = {}
+        self.__ghosts = {}
         self.__missiles = {}
         self.__battle_dir = None
 
@@ -391,6 +411,10 @@ class MainWindow(QMainWindow):
         while self.__missiles:
             missileid, missile = self.__missiles.popitem()
             self.__arenaWidget.removeMissile(missile)
+
+        while self.__ghosts:
+            ghostid, ghost = self.__ghosts.popitem()
+            self.__arenaWidget.removeGhost(ghost)
 
         timestamp = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
         battle_dir = os.path.join(os.path.expanduser("~/.local/share/bottisota/battles"), timestamp)
@@ -434,9 +458,11 @@ class MainWindow(QMainWindow):
         self.__blueBotProcess = QProcess(self)
         self.__blueBotProcess.setStandardErrorFile(os.path.join(self.__battle_dir, "blue.err"))
         self.__blueBotProcess.setProgram(beginDialog.blueBotProgram)
+        self.__blueBotProcess.readyReadStandardOutput.connect(self.__readBlueBotLog)
         self.__redBotProcess = QProcess(self)
         self.__redBotProcess.setStandardErrorFile(os.path.join(self.__battle_dir, "red.err"))
         self.__redBotProcess.setProgram(beginDialog.redBotProgram)
+        self.__redBotProcess.readyReadStandardOutput.connect(self.__readRedBotLog)
 
         self.__blueBotProcess.start()
 
@@ -510,6 +536,79 @@ class MainWindow(QMainWindow):
 
                 if re.match(r'^end$', log_entry):
                     self.__timer.stop()
+                    continue
+        except:
+            self.close()
+            raise
+
+    def __readBlueBotLog(self):
+        try:
+            while self.__blueBotProcess.canReadLine():
+                log_entry = self.__blueBotProcess.readLine().data().decode("utf-8").strip()
+
+                match = re.match(r'^I guess bot (\d+) is at (\d+), (\d+), heading to (\d+) with speed (\d+)$', log_entry)
+                if match:
+                    enemy_botid, enemy_x, enemy_y, enemy_direction, enemy_speed = [int(v) for v in match.groups()]
+                    color = [QColor(0, 0, 255, 128), QColor(255, 0, 0, 128)][enemy_botid - 1]
+                    try:
+                        enemy_ghost = self.__ghosts[enemy_botid]
+                    except KeyError:
+                        enemy_ghost = self.__ghosts[enemy_botid] = self.__arenaWidget.addGhost(enemy_x, enemy_y, enemy_direction, color)
+                        enemy_ghost.setPen(QPen(Qt.NoPen))
+                    else:
+                        enemy_ghost.setPos(enemy_x, enemy_y)
+                        enemy_ghost.setRotation(enemy_direction)
+                    continue
+
+                match = re.match(r'^I guess I am at (\d+), (\d+), heading to (\d+)$', log_entry)
+                if match:
+                    x, y, heading = [int(v) for v in match.groups()]
+                    color = QColor(0, 0, 255, 128)
+                    try:
+                        ghost = self.__ghosts[1]
+                    except KeyError:
+                        ghost = self.__ghosts[1] = self.__arenaWidget.addGhost(x, y, heading, color)
+                        ghost.setPen(QPen(Qt.NoPen))
+                    else:
+                        ghost.setPos(x, y)
+                        ghost.setRotation(heading)
+                    continue
+
+        except:
+            self.close()
+            raise
+
+    def __readRedBotLog(self):
+        try:
+            while self.__redBotProcess.canReadLine():
+                log_entry = self.__redBotProcess.readLine().data().decode("utf-8").strip()
+
+                match = re.match(r'^I guess bot (\d+) is at (\d+), (\d+), heading to (\d+) with speed (\d+)$', log_entry)
+                if match:
+                    enemy_botid, enemy_x, enemy_y, enemy_direction, enemy_speed = [int(v) for v in match.groups()]
+                    color = [QColor(0, 0, 255, 128), QColor(255, 0, 0, 128)][enemy_botid - 1]
+                    try:
+                        enemy_ghost = self.__ghosts[enemy_botid]
+                    except KeyError:
+                        enemy_ghost = self.__ghosts[enemy_botid] = self.__arenaWidget.addGhost(enemy_x, enemy_y, enemy_direction, color)
+                        enemy_ghost.setPen(QPen(Qt.NoPen))
+                    else:
+                        enemy_ghost.setPos(enemy_x, enemy_y)
+                        enemy_ghost.setRotation(enemy_direction)
+                    continue
+
+                match = re.match(r'^I guess I am at (\d+), (\d+), heading to (\d+)$', log_entry)
+                if match:
+                    x, y, heading = [int(v) for v in match.groups()]
+                    color = QColor(255, 0, 0, 128)
+                    try:
+                        ghost = self.__ghosts[2]
+                    except KeyError:
+                        ghost = self.__ghosts[2] = self.__arenaWidget.addGhost(x, y, heading, color)
+                        ghost.setPen(QPen(Qt.NoPen))
+                    else:
+                        ghost.setPos(x, y)
+                        ghost.setRotation(heading)
                     continue
         except:
             self.close()
