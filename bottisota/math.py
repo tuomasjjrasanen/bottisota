@@ -24,4 +24,4 @@ def travel(x, y, direction, distance):
     xd = math.cos(math.radians(direction)) * distance
     yd = math.sin(math.radians(direction)) * distance
 
-    return x + xd, y + yd
+    return minmaxloc((x + xd, y + yd))
