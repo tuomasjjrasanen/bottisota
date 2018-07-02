@@ -395,6 +395,12 @@ class MainWindow(QMainWindow):
         self.__quitAction.setShortcut(QKeySequence("Ctrl+Q"))
         self.__quitAction.triggered.connect(self.close)
 
+        self.__toggleGhostsAction = QAction(self)
+        self.__toggleGhostsAction.setCheckable(True)
+        self.__toggleGhostsAction.setChecked(True)
+        self.__toggleGhostsAction.setText("&Ghosts")
+        self.__toggleGhostsAction.toggled.connect(self.__toggleGhosts)
+
         menuBar = QMenuBar()
 
         fileMenu = menuBar.addMenu("&File")
@@ -402,6 +408,7 @@ class MainWindow(QMainWindow):
 
         viewMenu = menuBar.addMenu("&View")
         viewMenu.addAction(self.__statusDockWidget.toggleViewAction())
+        viewMenu.addAction(self.__toggleGhostsAction)
 
         battleMenu = menuBar.addMenu("&Battle")
         battleMenu.addAction(self.__beginBattleAction)
@@ -415,6 +422,10 @@ class MainWindow(QMainWindow):
         self.__ghosts = {}
         self.__missiles = {}
         self.__battle_dir = None
+
+    def __toggleGhosts(self, visible):
+        for ghost in self.__ghosts.values():
+            ghost.setVisible(visible)
 
     def __beginBattle(self):
         while self.__bots:
@@ -568,6 +579,7 @@ class MainWindow(QMainWindow):
                         enemy_ghost = self.__ghosts[enemy_botid]
                     except KeyError:
                         enemy_ghost = self.__ghosts[enemy_botid] = self.__arenaWidget.addGhost(enemy_x, enemy_y, enemy_direction, color)
+                        enemy_ghost.setVisible(self.__toggleGhostsAction.isChecked())
                         enemy_ghost.setPen(QPen(Qt.NoPen))
                     else:
                         enemy_ghost.setPos(enemy_x, enemy_y)
@@ -582,6 +594,7 @@ class MainWindow(QMainWindow):
                         ghost = self.__ghosts[1]
                     except KeyError:
                         ghost = self.__ghosts[1] = self.__arenaWidget.addGhost(x, y, heading, color)
+                        ghost.setVisible(self.__toggleGhostsAction.isChecked())
                         ghost.setPen(QPen(Qt.NoPen))
                     else:
                         ghost.setPos(x, y)
@@ -605,6 +618,7 @@ class MainWindow(QMainWindow):
                         enemy_ghost = self.__ghosts[enemy_botid]
                     except KeyError:
                         enemy_ghost = self.__ghosts[enemy_botid] = self.__arenaWidget.addGhost(enemy_x, enemy_y, enemy_direction, color)
+                        enemy_ghost.setVisible(self.__toggleGhostsAction.isChecked())
                         enemy_ghost.setPen(QPen(Qt.NoPen))
                     else:
                         enemy_ghost.setPos(enemy_x, enemy_y)
@@ -619,6 +633,7 @@ class MainWindow(QMainWindow):
                         ghost = self.__ghosts[2]
                     except KeyError:
                         ghost = self.__ghosts[2] = self.__arenaWidget.addGhost(x, y, heading, color)
+                        ghost.setVisible(self.__toggleGhostsAction.isChecked())
                         ghost.setPen(QPen(Qt.NoPen))
                     else:
                         ghost.setPos(x, y)
