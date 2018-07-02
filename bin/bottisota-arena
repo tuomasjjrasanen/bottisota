@@ -26,13 +26,6 @@ logger.handlers[0].setFormatter(logging.Formatter("%(levelname)s|%(name)s|%(asct
 battle_logger = logging.getLogger("bottisota.battle")
 battle_logger.addHandler(logging.StreamHandler(sys.stdout))
 
-def randpos():
-    x = random.randint(0, bottisota.ARENA_WIDTH - 1)
-    y = random.randint(0, bottisota.ARENA_HEIGHT - 1)
-    direction = random.randint(0, 359)
-
-    return (x, y), direction
-
 class Clock:
 
     def __init__(self):
@@ -231,7 +224,8 @@ class Controller:
 class Bot:
 
     def __init__(self, idnum):
-        loc, direction = randpos()
+        loc = bottisota.math.randloc()
+        direction = bottisota.math.randdirection()
 
         self.idnum = idnum
         self.x, self.y = loc
