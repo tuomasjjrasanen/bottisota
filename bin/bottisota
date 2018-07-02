@@ -57,10 +57,23 @@ class GraphicsBotItem(QGraphicsPolygonItem):
         polygon = QPolygonF([QPointF(-6.6, -5), QPointF(-6.6, 5), QPointF(13.4, 0)])
         QGraphicsPolygonItem.__init__(self, polygon, parent)
 
+        self.__healthLine = QGraphicsLineItem(-6.6, -10, 13.4, -10, self)
+        healthLinePen = QPen(Qt.green)
+        healthLinePen.setWidth(2)
+        healthLinePen.setCapStyle(Qt.RoundCap)
+        self.__healthLine.setPen(healthLinePen)
+
         self.__waypoints = []
         self.__beam = None
 
         self.setBrush(color)
+
+    def setDamage(self, damage):
+        if damage >= 100:
+            self.__healthLine.hide()
+            return
+
+        self.__healthLine.setLine(-6.6, -10, 13.4 - min(20, round(damage / 5)), -10)
 
     def setTargetPos(self, x, y):
         dx = (x - self.x()) / 22
@@ -500,6 +513,7 @@ class MainWindow(QMainWindow):
                         bot.setTargetPos(x, y)
                         bot.setRotation(direction)
                         bot.hideScanBeam()
+                        bot.setDamage(damage)
                     self.__statusWidget.setStatus(bot_name, x, y, speed, direction, damage)
                     continue
 
