@@ -32,7 +32,7 @@ attributes:
 * y coordinate: integer
 * direction: integer
 * speed: integer
-* damage: integer
+* health: integer
 
 ==== Bot Control Protocol
 

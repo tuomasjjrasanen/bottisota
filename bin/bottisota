@@ -54,10 +54,10 @@ class ZoomableGraphicsView(QGraphicsView):
 class GraphicsBotItem(QGraphicsPolygonItem):
 
     def __init__(self, color=Qt.red, parent=None):
-        polygon = QPolygonF([QPointF(-6.6, -5), QPointF(-6.6, 5), QPointF(13.4, 0)])
+        polygon = QPolygonF([QPointF(-6.6, -5), QPointF(-6.6, 5), QPointF(-6.6 + 20, 0)])
         QGraphicsPolygonItem.__init__(self, polygon, parent)
 
-        self.__healthLine = QGraphicsLineItem(-6.6, -10, 13.4, -10, self)
+        self.__healthLine = QGraphicsLineItem(-6.6, -10, -6.6 + 20, -10, self)
         healthLinePen = QPen(Qt.green)
         healthLinePen.setWidth(2)
         healthLinePen.setCapStyle(Qt.RoundCap)
@@ -68,12 +68,14 @@ class GraphicsBotItem(QGraphicsPolygonItem):
 
         self.setBrush(color)
 
-    def setDamage(self, damage):
-        if damage >= 100:
+    def setHealth(self, health):
+        if health == bottisota.constants.HEALTH_MIN:
             self.__healthLine.hide()
             return
 
-        self.__healthLine.setLine(-6.6, -10, 13.4 - min(20, round(damage / 5)), -10)
+        health_line_length = max(0, round(20 / bottisota.constants.HEALTH_MAX * health))
+
+        self.__healthLine.setLine(-6.6, -10, -6.6 + health_line_length, -10)
 
     def setTargetPos(self, x, y):
         dx = (x - self.x()) / 22
@@ -260,7 +262,7 @@ class StatusWidget(QWidget):
 
         layout = QVBoxLayout(self)
 
-        header_labels = ["Bot", "X", "Y", "Speed", "Direction", "Damage"]
+        header_labels = ["Bot", "X", "Y", "Speed", "Direction", "Health"]
 
         self.__botRows = {}
 
@@ -271,7 +273,7 @@ class StatusWidget(QWidget):
 
         layout.addWidget(self.__tableWidget)
 
-    def setStatus(self, bot, x, y, speed, direction, damage):
+    def setStatus(self, bot, x, y, speed, direction, health):
         try:
             row = self.__botRows[bot]
         except KeyError:
@@ -283,7 +285,7 @@ class StatusWidget(QWidget):
         self.__tableWidget.setItem(row, 2, QTableWidgetItem(str(y)))
         self.__tableWidget.setItem(row, 3, QTableWidgetItem(str(speed)))
         self.__tableWidget.setItem(row, 4, QTableWidgetItem(str(direction)))
-        self.__tableWidget.setItem(row, 5, QTableWidgetItem(str(damage)))
+        self.__tableWidget.setItem(row, 5, QTableWidgetItem(str(health)))
 
         for i in range(self.__tableWidget.rowCount()):
             for j in range(self.__tableWidget.columnCount()):
@@ -510,9 +512,9 @@ class MainWindow(QMainWindow):
             while self.__arenaProcess.canReadLine():
                 log_entry = self.__arenaProcess.readLine().data().decode("utf-8").strip()
 
-                match = re.match(r'^bot (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+), damage (\d+)$', log_entry)
+                match = re.match(r'^bot (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+), health (\d+)$', log_entry)
                 if match:
-                    botid, x, y, direction, speed, damage = [int(v) for v in match.groups()]
+                    botid, x, y, direction, speed, health = [int(v) for v in match.groups()]
                     bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
                     if not self.__bots:
                         self.__redBotProcess.start()
@@ -524,8 +526,8 @@ class MainWindow(QMainWindow):
                         bot.setTargetPos(x, y)
                         bot.setRotation(direction)
                         bot.hideScanBeam()
-                        bot.setDamage(damage)
-                    self.__statusWidget.setStatus(bot_name, x, y, speed, direction, damage)
+                        bot.setHealth(health)
+                    self.__statusWidget.setStatus(bot_name, x, y, speed, direction, health)
                     continue
 
                 match = re.match(r'^bot (\d+) scanning direction (\d+)±(\d+)$', log_entry)

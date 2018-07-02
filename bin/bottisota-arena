@@ -234,7 +234,7 @@ class Bot:
         self.x, self.y = loc
         self.direction = direction
         self.speed = bottisota.DRV_SPEED_MIN
-        self.damage = bottisota.DAMAGE_MIN
+        self.health = bottisota.HEALTH_MAX
 
         self.scn_direction = 0
         self.scn_resolution = 0
@@ -284,7 +284,7 @@ class Bot:
             self.scn_idnum = target.idnum
 
     def log_status(self):
-        battle_logger.info("bot %d at %d, %d, direction to %d, speed %d, damage %d", self.idnum, self.x, self.y, self.direction, self.speed, self.damage)
+        battle_logger.info("bot %d at %d, %d, direction to %d, speed %d, health %d", self.idnum, self.x, self.y, self.direction, self.speed, self.health)
         if self.scn_on:
             battle_logger.info("bot %d scanning direction %d±%d", self.idnum, self.scn_direction, self.scn_resolution)
 
@@ -297,10 +297,10 @@ class Bot:
         return missile
 
     def is_scrap(self):
-        return self.damage >= bottisota.DAMAGE_MAX
+        return self.health == bottisota.HEALTH_MIN
 
     def add_damage(self, damage):
-        self.damage += damage
+        self.health = max(bottisota.HEALTH_MIN, self.health - damage)
 
 class Battle:
 
