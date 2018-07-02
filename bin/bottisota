@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import collections
 import datetime
 import math
 import os
@@ -13,7 +14,11 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
 import bottisota.bus
+import bottisota.constants
 import bottisota.sprites
+
+_ANIMATION_TICK_MS = 20
+_WAYPOINTS = (bottisota.constants.TICK_MS - 60) // _ANIMATION_TICK_MS
 
 class ZoomableGraphicsView(QGraphicsView):
 
@@ -63,7 +68,7 @@ class GraphicsBotItem(QGraphicsPolygonItem):
         healthLinePen.setCapStyle(Qt.RoundCap)
         self.__healthLine.setPen(healthLinePen)
 
-        self.__waypoints = []
+        self.__waypoints = collections.deque()
         self.__beam = None
 
         self.setBrush(color)
@@ -78,25 +83,24 @@ class GraphicsBotItem(QGraphicsPolygonItem):
         self.__healthLine.setLine(-6.6, -10, -6.6 + health_line_length, -10)
 
     def setTargetPos(self, x, y):
-        dx = (x - self.x()) / 22
-        dy = (y - self.y()) / 22
+        dx = (x - self.x()) / _WAYPOINTS
+        dy = (y - self.y()) / _WAYPOINTS
 
-        xs = [self.x() + i * dx for i in range(22)]
+        xs = [self.x() + i * dx for i in range(_WAYPOINTS)]
         xs.append(x)
 
-        ys = [self.y() + i * dy for i in range(22)]
+        ys = [self.y() + i * dy for i in range(_WAYPOINTS)]
         ys.append(y)
 
-        waypoints = list(zip(xs, ys))
-        waypoints.reverse()
-        self.__waypoints.extend(waypoints)
+        for x, y in zip(xs, ys):
+            self.__waypoints.append((x, y))
 
     def advance(self, phase):
         if phase == 0:
             return
 
         if self.__waypoints:
-            x, y = self.__waypoints.pop()
+            x, y = self.__waypoints.popleft()
             self.setPos(x, y)
 
     def showScanBeam(self, direction, resolution):
@@ -176,24 +180,23 @@ class GraphicsMissileItem(QGraphicsPolygonItem):
         polygon = QPolygonF([QPointF(-5, -2), QPointF(-5, 2), QPointF(10, 0)])
         QGraphicsPolygonItem.__init__(self, polygon, parent)
 
-        self.__waypoints = []
+        self.__waypoints = collections.deque()
         self.__is_exploding = False
 
         self.setBrush(Qt.black)
 
     def setTargetPos(self, x, y):
-        dx = (x - self.x()) / 22
-        dy = (y - self.y()) / 22
+        dx = (x - self.x()) / _WAYPOINTS
+        dy = (y - self.y()) / _WAYPOINTS
 
-        xs = [self.x() + i * dx for i in range(22)]
+        xs = [self.x() + i * dx for i in range(_WAYPOINTS)]
         xs.append(x)
 
-        ys = [self.y() + i * dy for i in range(22)]
+        ys = [self.y() + i * dy for i in range(_WAYPOINTS)]
         ys.append(y)
 
-        waypoints = list(zip(xs, ys))
-        waypoints.reverse()
-        self.__waypoints.extend(waypoints)
+        for waypoint in zip(xs, ys):
+            self.__waypoints.append(waypoint)
 
     def explode(self):
         self.__is_exploding = True
@@ -203,7 +206,7 @@ class GraphicsMissileItem(QGraphicsPolygonItem):
             return
 
         if self.__waypoints:
-            x, y = self.__waypoints.pop()
+            x, y = self.__waypoints.popleft()
             self.setPos(x, y)
         elif self.__is_exploding:
             self.__is_exploding = False
@@ -558,7 +561,7 @@ class MainWindow(QMainWindow):
                     missile.explode()
 
                 if re.match(r'^begin$', log_entry):
-                    self.__timer.start(20)
+                    self.__timer.start(_ANIMATION_TICK_MS)
                     continue
 
                 if re.match(r'^end$', log_entry):
