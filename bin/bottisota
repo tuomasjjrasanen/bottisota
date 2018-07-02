@@ -215,9 +215,6 @@ class ArenaWidget(QWidget):
 
         return bot
 
-    def removeGhost(self, ghost):
-        self.__arenaGraphicsScene.removeItem(ghost)
-
     def addBot(self, x, y, direction, color):
         bot = GraphicsBotItem(color)
         bot.setParentItem(self.__arenaRectItem)
@@ -225,9 +222,6 @@ class ArenaWidget(QWidget):
         bot.setRotation(direction)
 
         return bot
-
-    def removeBot(self, bot):
-        self.__arenaGraphicsScene.removeItem(bot)
 
     def addMissile(self, x, y, direction):
         missile = GraphicsMissileItem()
@@ -237,8 +231,8 @@ class ArenaWidget(QWidget):
 
         return missile
 
-    def removeMissile(self, missile):
-        self.__arenaGraphicsScene.removeItem(missile)
+    def removeItem(self, entity):
+        self.__arenaGraphicsScene.removeItem(entity)
 
 class StatusWidget(QWidget):
 
@@ -406,15 +400,15 @@ class MainWindow(QMainWindow):
     def __beginBattle(self):
         while self.__bots:
             botid, bot = self.__bots.popitem()
-            self.__arenaWidget.removeBot(bot)
+            self.__arenaWidget.removeItem(bot)
 
         while self.__missiles:
             missileid, missile = self.__missiles.popitem()
-            self.__arenaWidget.removeMissile(missile)
+            self.__arenaWidget.removeItem(missile)
 
         while self.__ghosts:
             ghostid, ghost = self.__ghosts.popitem()
-            self.__arenaWidget.removeGhost(ghost)
+            self.__arenaWidget.removeItem(ghost)
 
         timestamp = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
         battle_dir = os.path.join(os.path.expanduser("~/.local/share/bottisota/battles"), timestamp)
