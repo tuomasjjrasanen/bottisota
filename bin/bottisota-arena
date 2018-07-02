@@ -291,9 +291,6 @@ class Bot:
         if self.scn_on:
             battle_logger.info("bot %d scanning direction %d±%d", self.idnum, self.scn_direction, self.scn_resolution)
 
-        if self.is_scrap():
-            battle_logger.info("bot %d destroyed", self.idnum)
-
     def launch_missile(self, direction, distance):
         missile = Missile(self.loc, self.speed, direction, distance)
         missile.log_status()
