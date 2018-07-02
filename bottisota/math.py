@@ -38,3 +38,6 @@ def randloc():
     y = random.randint(0, bottisota.ARENA_HEIGHT - 1)
 
     return x, y
+
+def randdirection():
+    return random.randint(0, 359)
