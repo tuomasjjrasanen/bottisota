@@ -41,9 +41,15 @@ class ZoomableGraphicsView(QGraphicsView):
                            1 / ZoomableGraphicsView.ZOOM_FACTOR)
                 event.accept()
 
-    def fitAllInView(self):
+    def fitSceneInView(self):
         if self.scene() is not None:
-            self.fitInView(self.scene().itemsBoundingRect(), Qt.KeepAspectRatio)
+            sceneRect = self.scene().sceneRect()
+            sceneRectMargins = QMarginsF(15, 15, 15, 15)
+            self.fitInView(sceneRect.marginsAdded(sceneRectMargins), Qt.KeepAspectRatio)
+
+    def resizeEvent(self, event):
+        QGraphicsView.resizeEvent(self, event)
+        self.fitSceneInView()
 
 class GraphicsBotItem(QGraphicsPolygonItem):
 
