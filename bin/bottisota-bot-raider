@@ -176,9 +176,9 @@ class Controller(BotStateMachine):
 
     @BotStateMachine.state
     def narrow_scan_sector(self):
-        self.scn_resolution = max(2, self.scn_resolution // 2)
+        self.scn_resolution = max(5, self.scn_resolution // 2)
 
-        if self.scn_resolution == 2:
+        if self.scn_resolution == 5:
             return "MIN"
 
         return ""
@@ -208,7 +208,7 @@ class Controller(BotStateMachine):
 
     @BotStateMachine.state
     def widen_scan_sector(self):
-        self.scn_resolution = min(bottisota.SCN_RESOLUTION_MAX, self.scn_resolution * 2)
+        self.scn_resolution = bottisota.SCN_RESOLUTION_MAX # min(bottisota.SCN_RESOLUTION_MAX, self.scn_resolution * 2)
 
         if self.scn_resolution == bottisota.SCN_RESOLUTION_MAX:
             return "MAX"
