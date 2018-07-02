@@ -55,40 +55,40 @@ class Controller(BotStateMachine):
     def __init__(self):
         BotStateMachine.__init__(self)
 
-        self.loc = None
-        self.speed = 0
-        self.direction = 0
-        self.tick = 0
+        self._loc = None
+        self._speed = 0
+        self._direction = 0
+        self._tick = 0
 
-        self.scn_direction = 0
-        self.scn_resolution = bottisota.SCN_RESOLUTION_MAX
+        self._scn_direction = 0
+        self._scn_resolution = bottisota.SCN_RESOLUTION_MAX
 
-        self.enemy_idnum = None
-        self.enemy_heading = 0
-        self.enemy_speed = 0
-        self.enemy_loc = None
-        self.enemy_loc_tick = None
+        self._enemy_idnum = None
+        self._enemy_heading = 0
+        self._enemy_speed = 0
+        self._enemy_loc = None
+        self._enemy_loc_tick = None
 
     def _sys_pos(self):
-        x, y, self.speed, self.direction = self.botconn.sys_pos()
-        self.tick += 1
+        x, y, self._speed, self._direction = self.botconn.sys_pos()
+        self._tick += 1
         self._guesstimate_loc()
-        self.loc = x, y
+        self._loc = x, y
 
     def _sys_drv(self, direction, speed):
         self.botconn.sys_drv(direction, speed)
-        self.tick += 1
-        self.direction = direction
-        self.speed = speed
+        self._tick += 1
+        self._direction = direction
+        self._speed = speed
         self._guesstimate_loc()
 
     def _move_to_center(self, speed):
         center_loc = (bottisota.ARENA_WIDTH // 2, bottisota.ARENA_HEIGHT // 2)
-        self._sys_drv(bottisota.math.direction(self.loc, center_loc), speed)
+        self._sys_drv(bottisota.math.direction(self._loc, center_loc), speed)
 
     def _scan(self):
-        enemy_distance, enemy_idnum = self.botconn.sys_scn(self.scn_direction, self.scn_resolution)
-        self.tick += 1
+        enemy_distance, enemy_idnum = self.botconn.sys_scn(self._scn_direction, self._scn_resolution)
+        self._tick += 1
         self._guesstimate_loc()
 
         if enemy_distance:
@@ -98,29 +98,29 @@ class Controller(BotStateMachine):
         return False
 
     def _guesstimate_enemy_loc(self, enemy_distance, enemy_idnum):
-        self.enemy_idnum = enemy_idnum
-        if self.loc is not None:
-            x, y = self.loc
-            last_enemy_loc_tick = self.enemy_loc_tick
-            last_enemy_loc = self.enemy_loc
-            enemy_x, enemy_y = self.enemy_loc = bottisota.math.travel(x, y, self.scn_direction, enemy_distance)
-            self.enemy_loc_tick = self.tick
+        self._enemy_idnum = enemy_idnum
+        if self._loc is not None:
+            x, y = self._loc
+            last_enemy_loc_tick = self._enemy_loc_tick
+            last_enemy_loc = self._enemy_loc
+            enemy_x, enemy_y = self._enemy_loc = bottisota.math.travel(x, y, self._scn_direction, enemy_distance)
+            self._enemy_loc_tick = self._tick
             if last_enemy_loc is not None:
-                self.enemy_speed = bottisota.math.distance(last_enemy_loc, self.enemy_loc) // (self.tick - last_enemy_loc_tick)
-                self.enemy_heading = bottisota.math.direction(last_enemy_loc, self.enemy_loc)
-            bot_logger.info('I guess bot %d is at %d, %d, heading to %d with speed %d', self.enemy_idnum, enemy_x, enemy_y, self.enemy_heading, self.enemy_speed)
+                self._enemy_speed = bottisota.math.distance(last_enemy_loc, self._enemy_loc) // (self._tick - last_enemy_loc_tick)
+                self._enemy_heading = bottisota.math.direction(last_enemy_loc, self._enemy_loc)
+            bot_logger.info('I guess bot %d is at %d, %d, heading to %d with speed %d', self._enemy_idnum, enemy_x, enemy_y, self._enemy_heading, self._enemy_speed)
 
     def _guesstimate_loc(self):
-        if self.loc is not None:
-            x, y = self.loc
-            x, y = self.loc = bottisota.math.travel(x, y, self.direction, self.speed)
-            bot_logger.info('I guess I am at %d, %d, heading to %d', x, y, self.direction)
+        if self._loc is not None:
+            x, y = self._loc
+            x, y = self._loc = bottisota.math.travel(x, y, self._direction, self._speed)
+            bot_logger.info('I guess I am at %d, %d, heading to %d', x, y, self._direction)
 
     ## Operation states below
 
     @BotStateMachine.state
     def sync(self):
-        self.tick = self.botconn.sys_clk()
+        self._tick = self.botconn.sys_clk()
         self._guesstimate_loc()
 
         return ""
@@ -133,13 +133,13 @@ class Controller(BotStateMachine):
 
     @BotStateMachine.state
     def move_to_center_slowly(self):
-        self._move_to_center(max(self.speed // 2, 1))
+        self._move_to_center(max(self._speed // 2, 1))
 
         return ""
 
     @BotStateMachine.state
     def stop(self):
-        self._sys_drv(self.direction, 0)
+        self._sys_drv(self._direction, 0)
         self._sys_pos()
 
         return ""
@@ -149,19 +149,19 @@ class Controller(BotStateMachine):
         center_loc = (bottisota.ARENA_WIDTH // 2, bottisota.ARENA_HEIGHT // 2)
         self._sys_pos()
 
-        distance_to_center = bottisota.math.distance(self.loc, center_loc)
+        distance_to_center = bottisota.math.distance(self._loc, center_loc)
 
         if distance_to_center < 5:
             return "CLOSE_ENOUGH"
 
-        if distance_to_center < 5 * self.speed:
+        if distance_to_center < 5 * self._speed:
             return "NEARBY"
 
         return "FARAWAY"
 
     @BotStateMachine.state
     def scan_wide(self):
-        self.scn_resolution = bottisota.SCN_RESOLUTION_MAX
+        self._scn_resolution = bottisota.SCN_RESOLUTION_MAX
         if self._scan():
             return "ACK"
 
@@ -169,14 +169,14 @@ class Controller(BotStateMachine):
 
     @BotStateMachine.state
     def change_scan_sector(self):
-        self.scn_direction = (self.scn_direction + bottisota.SCN_RESOLUTION_MAX * 2) % 360
+        self._scn_direction = (self._scn_direction + bottisota.SCN_RESOLUTION_MAX * 2) % 360
         return ""
 
     @BotStateMachine.state
     def narrow_scan_sector(self):
-        self.scn_resolution = max(5, self.scn_resolution // 2)
+        self._scn_resolution = max(5, self._scn_resolution // 2)
 
-        if self.scn_resolution == 5:
+        if self._scn_resolution == 5:
             return "MIN"
 
         return ""
@@ -190,7 +190,7 @@ class Controller(BotStateMachine):
 
     @BotStateMachine.state
     def scan_left_sector(self):
-        self.scn_direction = (self.scn_direction - 2 * self.scn_resolution) % 360
+        self._scn_direction = (self._scn_direction - 2 * self._scn_resolution) % 360
         if self._scan():
             return "ACK"
 
@@ -198,7 +198,7 @@ class Controller(BotStateMachine):
 
     @BotStateMachine.state
     def scan_right_sector(self):
-        self.scn_direction = (self.scn_direction + 4 * self.scn_resolution) % 360
+        self._scn_direction = (self._scn_direction + 4 * self._scn_resolution) % 360
         if self._scan():
             return "ACK"
 
@@ -206,44 +206,44 @@ class Controller(BotStateMachine):
 
     @BotStateMachine.state
     def widen_scan_sector(self):
-        self.scn_resolution = bottisota.SCN_RESOLUTION_MAX # min(bottisota.SCN_RESOLUTION_MAX, self.scn_resolution * 2)
+        self._scn_resolution = bottisota.SCN_RESOLUTION_MAX # min(bottisota.SCN_RESOLUTION_MAX, self._scn_resolution * 2)
 
-        if self.scn_resolution == bottisota.SCN_RESOLUTION_MAX:
+        if self._scn_resolution == bottisota.SCN_RESOLUTION_MAX:
             return "MAX"
 
         return ""
 
     @BotStateMachine.state
     def eval_enemy_motion(self):
-        last_enemy_loc = self.enemy_loc
+        last_enemy_loc = self._enemy_loc
 
         if not self._scan():
             return "NACK"
 
-        if bottisota.math.distance(self.loc, last_enemy_loc) >= bottisota.math.distance(self.loc, self.enemy_loc):
+        if bottisota.math.distance(self._loc, last_enemy_loc) >= bottisota.math.distance(self._loc, self._enemy_loc):
             return "APPROACHING"
 
         return "DISTANCING"
 
     @BotStateMachine.state
     def standby_and_shoot(self):
-        enemy_distance = bottisota.math.distance(self.loc, self.enemy_loc)
-        msl_distance = min(bottisota.MSL_DISTANCE_MAX, enemy_distance - 2 * self.enemy_speed)
-        msl_direction = bottisota.math.direction(self.loc, self.enemy_loc)
+        enemy_distance = bottisota.math.distance(self._loc, self._enemy_loc)
+        msl_distance = min(bottisota.MSL_DISTANCE_MAX, enemy_distance - 2 * self._enemy_speed)
+        msl_direction = bottisota.math.direction(self._loc, self._enemy_loc)
         if msl_distance > 10:
             self.botconn.sys_msl(msl_direction, msl_distance)
-            self.tick += 1
+            self._tick += 1
             self._guesstimate_loc()
-        self._sys_drv(self.direction, 0)
+        self._sys_drv(self._direction, 0)
         return ""
 
     @BotStateMachine.state
     def follow_and_shoot(self):
-        enemy_distance = bottisota.math.distance(self.loc, self.enemy_loc)
-        msl_distance = min(bottisota.MSL_DISTANCE_MAX, enemy_distance + 2 * self.enemy_speed)
-        msl_direction = bottisota.math.direction(self.loc, self.enemy_loc)
+        enemy_distance = bottisota.math.distance(self._loc, self._enemy_loc)
+        msl_distance = min(bottisota.MSL_DISTANCE_MAX, enemy_distance + 2 * self._enemy_speed)
+        msl_direction = bottisota.math.direction(self._loc, self._enemy_loc)
         self.botconn.sys_msl(msl_direction, msl_distance)
-        self.tick += 1
+        self._tick += 1
         self._guesstimate_loc()
         self._sys_drv(msl_direction, bottisota.DRV_SPEED_MAX)
         return ""
