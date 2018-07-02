@@ -34,5 +34,3 @@ while True:
             diagonal_corner = CORNERS[(CORNERS.index(loc) + 2) % 4]
             new_direction = bottisota.math.direction(loc, diagonal_corner)
         botconn.sys_drv(new_direction, bottisota.DRV_SPEED_MAX)
-
-botconn.disconnect()

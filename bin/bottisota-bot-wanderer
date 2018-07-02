@@ -37,7 +37,4 @@ botconn = bottisota.bus.BotConnection()
 
 botconn.sys_clk()
 while True:
-    destination = randloc()
-    move_to(botconn, destination)
-
-botconn.disconnect()
+    move_to(botconn, randloc())

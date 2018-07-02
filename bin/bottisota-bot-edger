@@ -11,5 +11,3 @@ while True:
     x, y, speed, direction = botconn.sys_pos()
     if speed == 0:
         botconn.sys_drv((direction + 90) % 360, bottisota.DRV_SPEED_MAX)
-
-botconn.disconnect()

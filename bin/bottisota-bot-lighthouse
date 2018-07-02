@@ -13,14 +13,14 @@ def move_to_center(botconn):
         x, y, speed, direction = botconn.sys_pos()
         loc = x, y
 
-        center_distance = bottisota.math.distance(loc, center)
+        distance_to_center = bottisota.math.distance(loc, center)
 
         direction = bottisota.math.direction(loc, center)
 
-        if center_distance < 5:
+        if distance_to_center < 5:
             # Close enough, stop.
             new_speed = 0
-        elif center_distance < 5 * speed:
+        elif distance_to_center < 5 * speed:
             # We are getting closer, slow down.
             new_speed = max(speed // 2, 1)
         else:
@@ -32,13 +32,11 @@ def move_to_center(botconn):
         if new_speed == 0:
             break
 
-    return loc
-
 botconn = bottisota.bus.BotConnection()
 
 botconn.sys_clk()
 
-loc = move_to_center(botconn)
+move_to_center(botconn)
 
 scn_direction = 0
 scn_resolution = bottisota.SCN_RESOLUTION_MAX
@@ -51,5 +49,3 @@ while True:
         scn_direction = (scn_direction + bottisota.SCN_RESOLUTION_MAX * 2) % 360
     else:
         scn_resolution = max(1, min(scn_resolution * 2, bottisota.SCN_RESOLUTION_MAX))
-
-botconn.disconnect()

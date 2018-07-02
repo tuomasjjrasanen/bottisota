@@ -48,8 +48,6 @@ class BotStateMachine:
             symbol = state(self)
             state = state_transitions[(state.label, symbol)]
 
-        self.botconn.disconnect()
-
     STATE_TRANSITIONS = ()
 
 class Controller(BotStateMachine):
