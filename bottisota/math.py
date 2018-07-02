@@ -1,4 +1,5 @@
 import math
+import random
 
 import bottisota.constants
 
@@ -31,3 +32,9 @@ def travel(x, y, direction, distance):
     yd = math.sin(math.radians(direction)) * distance
 
     return minmaxloc((x + xd, y + yd))
+
+def randloc():
+    x = random.randint(0, bottisota.ARENA_WIDTH - 1)
+    y = random.randint(0, bottisota.ARENA_HEIGHT - 1)
+
+    return x, y
