@@ -77,7 +77,7 @@ class Missile:
 
         self.speed = self.next_speed
 
-    def damage(self, target_bot):
+    def inflict_damage(self, target_bot):
         if self.distance_remaining:
             # Still flying.
             return
@@ -361,7 +361,7 @@ class Battle:
     def __update_damages(self):
         for missile in self.iter_missiles():
             for bot in self.iter_bots():
-                missile.damage(bot)
+                missile.inflict_damage(bot)
 
     def __update_scans(self):
         for scanning_bot, scanned_bot in itertools.permutations(self.iter_bots(), 2):
