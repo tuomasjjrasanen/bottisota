@@ -9,7 +9,7 @@ setup(name='bottisota',
       author='Tuomas Räsänen',
       author_email='tuomasjjrasanen@tjjr.fi',
       url='http://tjjr.fi/sw/bottisota/',
-      packages=['bottisota'],
+      packages=['bottisota', 'bottisota.gui'],
       scripts=[
           'bin/bottisota',
           'bin/bottisota-arena',

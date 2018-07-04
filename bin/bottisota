@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import *
 
 import bottisota.bus
 import bottisota.constants
-import bottisota.sprites
+import bottisota.gui.sprites
 
 _ANIMATION_TICK_MS = 20
 _WAYPOINTS = (bottisota.constants.TICK_MS - 60) // _ANIMATION_TICK_MS
