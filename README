@@ -1,7 +1,7 @@
 = Bottisota
 
 Bottisota is a programming game where players compete against each
-other by programming controllers (AIs) of battle bots. All bots are
+other by programming controllers (AIs) for battle bots. All bots are
 physically identical, it's the controller logic which makes all the
 difference.
 
@@ -13,17 +13,49 @@ Similar projects:
 * TclRobots
 * Realtime battle
 
-What distinguishes Bottisota from similar projets is that it's written
-in Python 3, but its bot controller API is language-independent; bot
-controllers attach to the game server via sockets and the
-communication adheres to a simple line-oriented text protocol.
+What distinguishes Bottisota from its aforementioned predecessors is
+that it's written purely in Python 3, and, perhaps more importantly,
+its bot controller API is language-independent; bot controller
+programs attach to the game server via sockets and the communication
+is faciliated by a simple line-oriented text protocol. You are free to
+play the game with your programming language of choice!
 
-== Build and install
+Bottisota consists of a game server (bin/bottisota-server), a
+convenience controller API written in Python, a set of example
+controller programs (bin/bottisota-bot-ai-*) taking advantage of the
+API and a graphical UI (bin/bottisota) for launching the server and
+setting up battles.
 
-Simply just run:
-  python3 setup.py install --user
+== Build, install and play!
 
-== Entities
+Requirements:
+
+* make
+* Python3
+* PyQt5
+* PyQt5 development tools (pyrcc5)
+
+Optional:
+* Graphviz (aux/draw-states)
+
+
+To install, just run:
+  make installuser
+
+This installs everything to your home directory:
+* Executables to .local/bin
+* Python library to .local/lib
+
+Or if you would like to install it system-wide, run:
+
+  make
+  sudo make install
+
+Then just give it a go:
+
+  ~/.local/bin/bottisota
+
+== The Specification
 
 The world of Bottisota consists of following entities:
 
@@ -33,99 +65,155 @@ The world of Bottisota consists of following entities:
 
 === Arena
 
-Arena is 2D space where all the action takes place. It has following
-attributes:
-
-* width: integer, {1..}
-* height: integer, {1..}
-
-It defines the cartesian coordinate space where all the other
-Bottisota entities exist. The top-left coordinate is always (0, 0) and
-the bottom right is (width - 1, height - 1). Arena is bounded by
-impenetrable walls.
+Arena is the 2D space where all the action takes place. It defines the
+cartesian coordinate space where all the other Bottisota entities
+exist. The top-left coordinate is (0, 0) and the bottom right is (499,
+499). Arena is bounded by indestructible walls.
 
 === Missile
 
 Missiles are launched by bots. They are always launched to a certain
 direction with a certain range. The maximum range of a missile is 350
 distance units. They travel at constant speed of 60 distance units per
-tick.
+tick. When they have traveled the range
 
-Missiles inflict damage by exploding. They explode when they hit any
-surface (ground, bot or arena boundary).
+Missiles inflict damage by exploding. They explode when they hit
+ground or arena boundary. The amount of damage dealt by a missile to a
+bot is a function of explosion distance and is defined as follows:
 
-* x coordinate: interger, {0..499}
-* y coordinate: interger, {0..499}
-* direction: integer, {0..359}
-* speed: integer, 60
-* range: integer, {0..350}
-
-The amount of damage dealt by a missile to a bot is a function of
-explosion distance and is defined as follows:
-
-  damage(>= 40)	      = 0
-  damage(== 0)        = 25
+  damage(40+)	      = 0
+  damage(0)           = 40
   damage(distance)    = min(25, floor(1 / (distance / 150)))
 
 Example 1: A direct hit (when the distance from a bot to an exploding
-misile is zero) causes 25 points of damage.
+misile is zero) causes 40 points of damage.
+
+  damage(0)           = 40
 
 Example 2: An explosion 5 distance units away from a bot causes 25
 points of damage.
 
+  damage(5)           = 25
+
 Example 3: An explosion 10 distance units away from a bot causes 15
 points of damage.
+
+  damage(10)          = 15
 
 Example 4: An explosion 42 distance units away from a bot causes 0
 points of damage.
 
+  damage(42)          = 0
+
 === Bot
 
-A bot is a mobile programmable weapon platform with following
-attributes:
+A bot is a mobile weapon platform consisting of multiple individually
+controllable components and a controller unit. All components and the
+controller are connected to Bot Component Bus (BCB).
 
-* x coordinate: integer, {0..499}
-* y coordinate: integer, {0..499}
-* direction: integer, {0..359}
-* speed: integer, {0..10}
-* health: integer, {0..100}
+Available components and their specifications:
 
-==== Bot Control Protocol
+* Atomic clock
+  Measure system time in ticks.
 
-Bot Control Protocol (BCP) is line-oriented request-response text
-protocol which defines how bots and controller programs can
-communicate with each other. Lines are called messages and they must
-be terminated by a newline character '\n'. There are two different
-types of messages: requests and responses. Request message identifiers
-have '?'-suffix and response message identifiers have '='-suffix.
+  BCB id: CLK
+  Resolution: 1 tick
+  Accuracy: 100%
 
-The general format of BCP messages is defined in BNF as follows:
+* Variable resolution long-range scanner
+  Scan enemy bots and report distance to the closest one.
+
+  BCB id: SCN
+  Beam: 1-20 degree sector
+  Max range: 250
+  Accuracy: -/+ 5 per sector angle
+
+* Quad-missile turret with infinite reloads
+  Fire explosive projectiles.
+
+  BCB id: MSL
+  Rate of fire: 1 per tick
+  Range: 0-350
+  Missile speed: 60
+
+* 10-speed drive system
+  Turn nose and throttle engines.
+
+  BCB id: DRV
+  Speed: 1-10
+  Direction: 0-359 degrees
+
+* Hi-precision positioning system
+  Super accurate hi-precision positioning service.
+
+  BCB id: POS
+  Measurements: position, speed, direction
+  Accuracy: 100%
+
+==== BCB Protocol Overview
+
+Bot Component Bus Protocol (BCBP) is message-oriented request-response
+text protocol which defines how controller communicates with various
+bot components in the bus. All messages begin with a message
+identifier, followed by a variable number of arguments. All messages
+are terminated by a newline character '\n'. Message identifier
+specifies the addressed component and the type of the message.
+
+There are two different types of messages: requests and
+responses. Controller sends a request to the bus, corresponding
+component processes the request and sends back a response. Request
+message identifiers have '?'-suffix and response message identifiers
+have '='-suffix.
+
+The general format of BCBP messages is defined in Backus-Naur Format as follows:
 
   <message>             ::= <message_id> <arguments>
   <message_id>          ::= <request_message_id> | <response_message_id>
-  <request_message_id>  ::= <command> "?"
-  <response_message_id> ::= <command> "="
-  <command>             ::= <letter> | <letter> <command>
+  <request_message_id>  ::= <bcb_id> "?"
+  <response_message_id> ::= <bcb_id> "="
+  <bcb_id>              ::= <letter> | <letter> <bcb_id>
   <letter>              ::= "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
   <arguments>           ::= "\n" | " " <integer> <arguments>
   <integer>             ::= <digit> | <integer> <digit>
   <digit>               ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 
+==== Commands
 
-Table 1 lists all BCP messages.
+Request:     POS?
+Response:    POS= <err> <x> <y> <speed> <direction>
+Ticks:       1
+Description: This command instructs the positioning system component
+             to report the current position, speed and direction.
 
-+--------------------------------------------------------+
-|                 Table 1: BCP messages                  |
-+==========================+=============================+
-|Request messages          |Response messages            |
-+==========================+=============================+
-|POS?                      |POS= err x y speed direction |
-+--------------------------+-----------------------------+
-|CLK?                      |CLK= err tick                |
-+--------------------------+-----------------------------+
-|DRV? direction speed      |DRV= err speed               |
-+--------------------------+-----------------------------+
-|SCN? direction resolution |SCN= err distance            |
-+--------------------------+-----------------------------+
-|MSL? direction distance   |MSL= err                     |
-+--------------------------+-----------------------------+
+Request:     CLK?
+Response:    CLK= <err> <tick>
+Ticks:       1
+Description: This command instructs the clock to report the current
+             system time in ticks.
+
+Request:     DRV? <direction> <speed>
+Response:    DRV= <err> <speed>
+Ticks:       1
+
+Description: This command instructs the drive system component to turn
+             the nose to the given direction (0-359) and to throttle
+             engines to the given speed (1-10). Drive system reports
+             the actual achieved speed which might differ from the
+             instructed speed for example when the bot is physically
+             unable to move to that direction.
+
+Request:     SCN? <direction> <resolution>
+Response:    SCN= <err> <distance>
+Ticks:       1
+Description: This command instructs the scanner component to emit a
+             scanning beam to a given direction (0-359). Resolution (1-20
+             degrees) defines the width of the beam. Scanner component
+             reports the distance to the closest detected bot. Note
+             that the reported distance contains an error which is
+             directly propotional to the width of the beam.
+
+Request:     MSL? <direction> <distance>
+Response:    MSL= <err>
+Ticks:       1
+Description: This command instructs the turret to launch a missile to
+             the given direction (0-359) with given range (0-350).
