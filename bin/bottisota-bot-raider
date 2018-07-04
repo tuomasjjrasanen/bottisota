@@ -69,14 +69,14 @@ class Controller(BotStateMachine):
         self._enemy_loc = None
         self._enemy_loc_tick = None
 
-    def _sys_pos(self):
-        x, y, self._speed, self._direction = self.botconn.sys_pos()
+    def _syscall_pos(self):
+        x, y, self._speed, self._direction = self.botconn.syscall_pos()
         self._tick += 1
         self._guesstimate_loc()
         self._loc = x, y
 
-    def _sys_drv(self, direction, speed):
-        self.botconn.sys_drv(direction, speed)
+    def _syscall_drv(self, direction, speed):
+        self.botconn.syscall_drv(direction, speed)
         self._tick += 1
         self._direction = direction
         self._speed = speed
@@ -84,10 +84,10 @@ class Controller(BotStateMachine):
 
     def _move_to_center(self, speed):
         center_loc = (bottisota.ARENA_WIDTH // 2, bottisota.ARENA_HEIGHT // 2)
-        self._sys_drv(bottisota.math.direction(self._loc, center_loc), speed)
+        self._syscall_drv(bottisota.math.direction(self._loc, center_loc), speed)
 
     def _scan(self):
-        enemy_distance, enemy_idnum = self.botconn.sys_scn(self._scn_direction, self._scn_resolution)
+        enemy_distance, enemy_idnum = self.botconn.syscall_scn(self._scn_direction, self._scn_resolution)
         self._tick += 1
         self._guesstimate_loc()
 
@@ -120,7 +120,7 @@ class Controller(BotStateMachine):
 
     @BotStateMachine.state
     def sync(self):
-        self._tick = self.botconn.sys_clk()
+        self._tick = self.botconn.syscall_clk()
         self._guesstimate_loc()
 
         return ""
@@ -139,15 +139,15 @@ class Controller(BotStateMachine):
 
     @BotStateMachine.state
     def stop(self):
-        self._sys_drv(self._direction, 0)
-        self._sys_pos()
+        self._syscall_drv(self._direction, 0)
+        self._syscall_pos()
 
         return ""
 
     @BotStateMachine.state
     def find_center(self):
         center_loc = (bottisota.ARENA_WIDTH // 2, bottisota.ARENA_HEIGHT // 2)
-        self._sys_pos()
+        self._syscall_pos()
 
         distance_to_center = bottisota.math.distance(self._loc, center_loc)
 
@@ -231,10 +231,10 @@ class Controller(BotStateMachine):
         msl_distance = min(bottisota.MSL_DISTANCE_MAX, enemy_distance - 2 * self._enemy_speed)
         msl_direction = bottisota.math.direction(self._loc, self._enemy_loc)
         if msl_distance > 10:
-            self.botconn.sys_msl(msl_direction, msl_distance)
+            self.botconn.syscall_msl(msl_direction, msl_distance)
             self._tick += 1
             self._guesstimate_loc()
-        self._sys_drv(self._direction, 0)
+        self._syscall_drv(self._direction, 0)
         return ""
 
     @BotStateMachine.state
@@ -242,10 +242,10 @@ class Controller(BotStateMachine):
         enemy_distance = bottisota.math.distance(self._loc, self._enemy_loc)
         msl_distance = min(bottisota.MSL_DISTANCE_MAX, enemy_distance + 2 * self._enemy_speed)
         msl_direction = bottisota.math.direction(self._loc, self._enemy_loc)
-        self.botconn.sys_msl(msl_direction, msl_distance)
+        self.botconn.syscall_msl(msl_direction, msl_distance)
         self._tick += 1
         self._guesstimate_loc()
-        self._sys_drv(msl_direction, bottisota.DRV_SPEED_MAX)
+        self._syscall_drv(msl_direction, bottisota.DRV_SPEED_MAX)
         return ""
 
     STATE_TRANSITIONS = (

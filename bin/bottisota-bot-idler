@@ -6,7 +6,7 @@ import bottisota.bus
 
 botconn = bottisota.bus.BotConnection()
 
-botconn.sys_clk()
+botconn.syscall_clk()
 time.sleep(9999)
 
 botconn.disconnect()

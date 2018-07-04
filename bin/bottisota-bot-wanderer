@@ -6,7 +6,7 @@ import bottisota.bus
 
 def move_to(botconn, destination):
     while True:
-        x, y, speed, direction = botconn.sys_pos()
+        x, y, speed, direction = botconn.syscall_pos()
         loc = x, y
 
         distance_to_destination = bottisota.math.distance(loc, destination)
@@ -23,10 +23,10 @@ def move_to(botconn, destination):
             # Full speed ahead.
             speed = bottisota.DRV_SPEED_MAX
 
-        botconn.sys_drv(direction, speed)
+        botconn.syscall_drv(direction, speed)
 
 botconn = bottisota.bus.BotConnection()
 
-botconn.sys_clk()
+botconn.syscall_clk()
 while True:
     move_to(botconn, bottisota.math.randloc())
