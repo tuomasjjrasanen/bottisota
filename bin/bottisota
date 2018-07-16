@@ -103,7 +103,7 @@ class GraphicsBotItem(QGraphicsPolygonItem):
             x, y = self.__waypoints.popleft()
             self.setPos(x, y)
 
-    def showScanBeam(self, direction, resolution):
+    def setScanBeam(self, direction, resolution):
         if self.__beam is None:
             self.__beam = QGraphicsPathItem(self)
             self.__beam.setBrush(QColor(255, 255, 0, 32))
@@ -118,11 +118,11 @@ class GraphicsBotItem(QGraphicsPolygonItem):
 
         self.__beam.setPath(path)
         self.__beam.setRotation(direction - self.rotation() - 90)
-        self.__beam.show()
 
-    def hideScanBeam(self):
-        if self.__beam is not None:
+        if resolution == 0:
             self.__beam.hide()
+        else:
+            self.__beam.show()
 
 class GraphicsGhostItem(QGraphicsPolygonItem):
 
@@ -515,50 +515,37 @@ class MainWindow(QMainWindow):
             while self.__arenaProcess.canReadLine():
                 log_entry = self.__arenaProcess.readLine().data().decode("utf-8").strip()
 
-                match = re.match(r'^bot (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+), health (\d+)$', log_entry)
+                match = re.match(r'^Bot (\d+): x (\d+), y (\d+), health (\d+), direction (\d+), speed (\d+), scan (\d+)±(\d+)$', log_entry)
                 if match:
-                    botid, x, y, direction, speed, health = [int(v) for v in match.groups()]
+                    botid, x, y, health, direction, speed, scan_direction, scan_resolution = [int(v) for v in match.groups()]
                     bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
                     if not self.__bots:
                         self.__redBotProcess.start()
                     try:
                         bot = self.__bots[botid]
                     except KeyError:
-                        self.__bots[botid] = self.__arenaWidget.addBot(x, y, direction, color)
+                        bot = self.__bots[botid] = self.__arenaWidget.addBot(x, y, direction, color)
                     else:
                         bot.setTargetPos(x, y)
                         bot.setRotation(direction)
-                        bot.hideScanBeam()
+                        bot.setScanBeam(scan_direction, scan_resolution)
                         bot.setHealth(health)
-                    self.__statusWidget.setStatus(bot_name, x, y, speed, direction, health)
+                        self.__statusWidget.setStatus(bot_name, x, y, speed, direction, health)
                     continue
 
-                match = re.match(r'^bot (\d+) scanning direction (\d+)±(\d+)$', log_entry)
+                match = re.match(r'^Missile (\d+): x (\d+), y (\d+), health (\d+), direction (\d+), speed (\d+)$', log_entry)
                 if match:
-                    botid, scan_direction, scan_resolution = [int(v) for v in match.groups()]
-                    bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
-                    bot = self.__bots[botid]
-                    bot.showScanBeam(scan_direction, scan_resolution)
-                    continue
-
-                match = re.match(r'^missile (\d+) at (\d+), (\d+), direction to (\d+), speed (\d+)$', log_entry)
-                if match:
-                    missileid, x, y, direction, speed = [int(v) for v in match.groups()]
+                    missileid, x, y, health, direction, speed = [int(v) for v in match.groups()]
                     try:
                         missile = self.__missiles[missileid]
                     except KeyError:
-                        self.__missiles[missileid] = self.__arenaWidget.addMissile(x, y, direction)
+                        missile = self.__missiles[missileid] = self.__arenaWidget.addMissile(x, y, direction)
                     else:
                         missile.setTargetPos(x, y)
                         missile.setRotation(direction)
+                        if health == 0:
+                            missile.explode()
                     continue
-
-                match = re.match(r'^missile (\d+) exploded at (\d+), (\d+)$', log_entry)
-                if match:
-                    missileid, x, y = [int(v) for v in match.groups()]
-                    missile = self.__missiles.pop(missileid)
-                    missile.setTargetPos(x, y)
-                    missile.explode()
 
                 if re.match(r'^begin$', log_entry):
                     self.__timer.start(_ANIMATION_TICK_MS)

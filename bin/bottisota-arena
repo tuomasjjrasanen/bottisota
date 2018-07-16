@@ -74,6 +74,12 @@ class Thing:
     def add_damage(self, damage):
         self.__health = max(0, self.health - damage)
 
+    def status_line(self):
+        return "x %d, y %d, health %d" % (self.x, self.y, self.health)
+
+    def log_status(self):
+        battle_logger.info("%s %d: %s", self.__class__.__name__, self.idnum, self.status_line())
+
 class MovableThing(Thing):
 
     def __init__(self, x, y, health, direction, initial_speed, target_speed):
@@ -112,6 +118,9 @@ class MovableThing(Thing):
     def move(self):
         self._move_by(self.speed * 1)
 
+    def status_line(self):
+        return super().status_line() + ", direction %d, speed %d" % (self.direction, self.speed)
+
 class Missile(MovableThing):
 
     def __init__(self, x, y, speed, direction, distance):
@@ -141,12 +150,6 @@ class Missile(MovableThing):
 
             target_thing.add_damage(damage)
 
-    def log_status(self):
-        if self.is_destroyed():
-            battle_logger.info("missile %d exploded at %d, %d", self.idnum, self.x, self.y)
-        else:
-            battle_logger.info("missile %d at %d, %d, direction to %d, speed %d", self.idnum, self.x, self.y, self.direction, self.speed)
-
 class Bot(MovableThing):
 
     def __init__(self, x, y, direction):
@@ -156,10 +159,9 @@ class Bot(MovableThing):
         self.__scn_resolution = 0
         self.__scn_distance = 0
         self.__scn_idnum = 0
-        self.__scn_on = False
 
     def scan(self, target_bot):
-        if not self.__scn_on:
+        if self.__scn_resolution == 0:
             return
 
         target_distance = bottisota.math.distance(self.loc, target_bot.loc)
@@ -175,10 +177,8 @@ class Bot(MovableThing):
             self.__scn_distance = random.randint(round(distance_min), round(distance_max))
             self.__scn_idnum = target_bot.idnum
 
-    def log_status(self):
-        battle_logger.info("bot %d at %d, %d, direction to %d, speed %d, health %d", self.idnum, self.x, self.y, self.direction, self.speed, self.health)
-        if self.__scn_on:
-            battle_logger.info("bot %d scanning direction %d±%d", self.idnum, self.__scn_direction, self.__scn_resolution)
+    def status_line(self):
+        return super().status_line() + ", scan %d±%d" % (self.__scn_direction, self.__scn_resolution)
 
     def launch_missile(self, direction, distance):
         missile = Missile(self.x, self.y, self.speed, direction, distance)
@@ -190,7 +190,6 @@ class Bot(MovableThing):
         self.__scn_resolution = resolution
         self.__scn_distance = 0
         self.__scn_idnum = 0
-        self.__scn_on = True
 
     def stop_scan(self):
         scn_distance = self.__scn_distance
@@ -199,7 +198,6 @@ class Bot(MovableThing):
         self.__scn_idnum = 0
         self.__scn_resolution = 0
         self.__scn_direction = 0
-        self.__scn_on = False
 
         return scn_distance, scn_idnum
 
