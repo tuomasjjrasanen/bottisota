@@ -249,7 +249,7 @@ class Controller:
 
     def __read_syscall_scn(self):
         direction, resolution = self.__syscall[1]
-        if resolution > bottisota.SCN_RESOLUTION_MAX:
+        if bottisota.SCN_RESOLUTION_MIN > resolution > bottisota.SCN_RESOLUTION_MAX:
             self.__err = bottisota.protocol.ERR_BADARG
         else:
             self.__err = bottisota.protocol.ERR_OK
