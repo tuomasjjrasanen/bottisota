@@ -152,38 +152,56 @@ class Bot(MovableThing):
     def __init__(self, x, y, direction):
         super().__init__(x, y, bottisota.HEALTH_MAX, direction, bottisota.DRV_SPEED_MIN, bottisota.DRV_SPEED_MIN)
 
-        self.scn_direction = 0
-        self.scn_resolution = 0
-        self.scn_distance = 0
-        self.scn_idnum = 0
-        self.scn_on = False
+        self.__scn_direction = 0
+        self.__scn_resolution = 0
+        self.__scn_distance = 0
+        self.__scn_idnum = 0
+        self.__scn_on = False
 
-    def update_scan(self, target):
-        if not self.scn_on:
+    def scan(self, target_bot):
+        if not self.__scn_on:
             return
 
-        target_distance = bottisota.math.distance(self.loc, target.loc)
+        target_distance = bottisota.math.distance(self.loc, target_bot.loc)
         if target_distance > bottisota.SCN_DISTANCE:
             return
 
-        target_direction = bottisota.math.direction(self.loc, target.loc)
-        left_bound = (self.scn_direction - self.scn_resolution) % 360
-        right_bound = (self.scn_direction + self.scn_resolution) % 360
+        target_direction = bottisota.math.direction(self.loc, target_bot.loc)
+        left_bound = (self.__scn_direction - self.__scn_resolution) % 360
+        right_bound = (self.__scn_direction + self.__scn_resolution) % 360
         if left_bound <= target_direction <= right_bound:
-            distance_min = max(target_distance - bottisota.SCN_ERROR_PER_RESOLUTION * self.scn_resolution, 0)
-            distance_max = min(target_distance + bottisota.SCN_ERROR_PER_RESOLUTION * self.scn_resolution, bottisota.SCN_DISTANCE)
-            self.scn_distance = random.randint(round(distance_min), round(distance_max))
-            self.scn_idnum = target.idnum
+            distance_min = max(target_distance - bottisota.SCN_ERROR_PER_RESOLUTION * self.__scn_resolution, 0)
+            distance_max = min(target_distance + bottisota.SCN_ERROR_PER_RESOLUTION * self.__scn_resolution, bottisota.SCN_DISTANCE)
+            self.__scn_distance = random.randint(round(distance_min), round(distance_max))
+            self.__scn_idnum = target_bot.idnum
 
     def log_status(self):
         battle_logger.info("bot %d at %d, %d, direction to %d, speed %d, health %d", self.idnum, self.x, self.y, self.direction, self.speed, self.health)
-        if self.scn_on:
-            battle_logger.info("bot %d scanning direction %d±%d", self.idnum, self.scn_direction, self.scn_resolution)
+        if self.__scn_on:
+            battle_logger.info("bot %d scanning direction %d±%d", self.idnum, self.__scn_direction, self.__scn_resolution)
 
     def launch_missile(self, direction, distance):
         missile = Missile(self.x, self.y, self.speed, direction, distance)
         missile.log_status()
         return missile
+
+    def start_scan(self, direction, resolution):
+        self.__scn_direction = direction % 360
+        self.__scn_resolution = resolution
+        self.__scn_distance = 0
+        self.__scn_idnum = 0
+        self.__scn_on = True
+
+    def stop_scan(self):
+        scn_distance = self.__scn_distance
+        scn_idnum = self.__scn_idnum
+        self.__scn_distance = 0
+        self.__scn_idnum = 0
+        self.__scn_resolution = 0
+        self.__scn_direction = 0
+        self.__scn_on = False
+
+        return scn_distance, scn_idnum
 
 class Controller:
 
@@ -235,11 +253,7 @@ class Controller:
             self.__err = bottisota.protocol.ERR_BADARG
         else:
             self.__err = bottisota.protocol.ERR_OK
-            self.bot.scn_direction = direction % 360
-            self.bot.scn_resolution = resolution
-            self.bot.scn_distance = 0
-            self.bot.scn_idnum = 0
-            self.bot.scn_on = True
+            self.bot.start_scan(direction, resolution)
 
     def __read_syscall_msl(self):
         direction, distance = self.__syscall[1]
@@ -269,15 +283,7 @@ class Controller:
         return self.bot.speed,
 
     def __return_syscall_scn(self):
-        scn_distance = self.bot.scn_distance
-        scn_idnum = self.bot.scn_idnum
-        self.bot.scn_distance = 0
-        self.bot.scn_idnum = 0
-        self.bot.scn_resolution = 0
-        self.bot.scn_direction = 0
-        self.bot.scn_on = False
-
-        return scn_distance, scn_idnum
+        return self.bot.stop_scan()
 
     def __return_syscall_msl(self):
         return ()
@@ -370,9 +376,9 @@ class Battle:
         for missile in self.iter_missiles():
             missile.inflict_damage(self.iter_bots())
 
-    def __update_scans(self):
+    def __update_scan_results(self):
         for scanning_bot, scanned_bot in itertools.permutations(self.iter_bots(), 2):
-            scanning_bot.update_scan(scanned_bot)
+            scanning_bot.scan(scanned_bot)
 
     def __remove_destroyed_things(self):
         for controller in self.__controllers:
@@ -381,7 +387,7 @@ class Battle:
     def __update(self):
         self.__move_things()
         self.__update_damages()
-        self.__update_scans()
+        self.__update_scan_results()
 
     def __log_status(self):
         for controller in self.__controllers:
