@@ -462,8 +462,6 @@ class Arena:
     def run(self):
         battle = Battle()
 
-        battle_logger.info("init")
-
         battle.wait_for_controller(self.__sock)
         battle.wait_for_controller(self.__sock)
 
