@@ -203,7 +203,7 @@ class Bot(MovableThing):
 
 class Controller:
 
-    def __init__(self, sock, idnum):
+    def __init__(self, sock):
         self.__conn = bottisota.bus.ArenaConnection(sock)
         self.__syscall = None
         self.__err = None
@@ -316,11 +316,9 @@ class Battle:
 
     def wait_for_controller(self, arenasock):
         controllersock = arenasock.accept()[0]
-        idnum = len(self.__controllers) + 1
+        logger.info("controller connected")
 
-        logger.info("connection %d established", idnum)
-
-        controller = Controller(controllersock, idnum)
+        controller = Controller(controllersock)
         self.__controllers.append(controller)
         controller.log_status()
 
