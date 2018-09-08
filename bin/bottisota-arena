@@ -100,6 +100,11 @@ class MovableThing(Thing):
     def speed(self):
         return self.__speed
 
+    def add_damage(self, damage):
+        super().add_damage(damage)
+        if self.is_destroyed():
+            self.__target_speed = 0
+
     def _move_by(self, distance):
         direction_rad = math.radians(self.direction)
         dy = round(math.sin(direction_rad) * distance)
