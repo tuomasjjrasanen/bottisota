@@ -169,6 +169,9 @@ class Bot(MovableThing):
         if self.__scn_resolution == 0:
             return
 
+        if target_bot.is_destroyed():
+            return
+
         target_distance = bottisota.math.distance(self.loc, target_bot.loc)
         if target_distance > bottisota.SCN_DISTANCE:
             return
