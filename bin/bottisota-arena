@@ -276,6 +276,10 @@ class Controller:
         if not self.__syscall:
             return
 
+        if self.bot.is_destroyed():
+            self.__err = bottisota.protocol.ERR_DESTROYED
+            return
+
         self.__err = bottisota.protocol.ERR_UNKNOWN
         self.__read_syscall_methods[self.__syscall[0]]()
 
