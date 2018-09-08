@@ -71,11 +71,17 @@ class GraphicsBotItem(QGraphicsPolygonItem):
         self.__waypoints = collections.deque()
         self.__beam = None
 
+        self.__death_explosion_count = 0
+
         self.setBrush(color)
 
     def setHealth(self, health):
         if health == bottisota.constants.HEALTH_MIN:
             self.__healthLine.hide()
+            self.setBrush(QBrush(Qt.NoBrush))
+            if self.__death_explosion_count < 3:
+                self.scene().addItem(GraphicsExplosionItem(self.pos()))
+                self.__death_explosion_count += 1
             return
 
         health_line_length = max(0, round(20 / bottisota.constants.HEALTH_MAX * health))
