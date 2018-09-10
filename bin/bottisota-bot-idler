@@ -2,11 +2,7 @@
 
 import time
 
-import bottisota.bus
+import bottisota.bot
 
-botconn = bottisota.bus.BotConnection()
-
-botconn.syscall_clk()
+controller = bottisota.bot.Controller()
 time.sleep(9999)
-
-botconn.disconnect()
