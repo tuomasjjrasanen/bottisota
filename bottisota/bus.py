@@ -92,12 +92,10 @@ class BotConnection(_Connection):
         return speed
 
     def syscall_pos(self):
-        x, y, direction, speed = self.syscall(bottisota.protocol.SYSCALL_POS_FUN)
-        return x, y, direction, speed
+        return self.syscall(bottisota.protocol.SYSCALL_POS_FUN)
 
     def syscall_scn(self, direction, resolution):
-        distance, botid = self.syscall(bottisota.protocol.SYSCALL_SCN_FUN, direction, resolution)
-        return distance, botid
+        return self.syscall(bottisota.protocol.SYSCALL_SCN_FUN, direction, resolution)
 
     def syscall_msl(self, direction, distance):
         self.syscall(bottisota.protocol.SYSCALL_MSL_FUN, direction, distance)
