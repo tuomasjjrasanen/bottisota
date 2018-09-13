@@ -221,19 +221,19 @@ class Controller:
         self.missiles = []
 
         self.__read_syscall_methods = {
-            bottisota.protocol.SYSCALL_POS_FUN: self.__read_syscall_pos,
-            bottisota.protocol.SYSCALL_CLK_FUN: self.__read_syscall_clk,
-            bottisota.protocol.SYSCALL_DRV_FUN: self.__read_syscall_drv,
-            bottisota.protocol.SYSCALL_SCN_FUN: self.__read_syscall_scn,
-            bottisota.protocol.SYSCALL_MSL_FUN: self.__read_syscall_msl,
+            bottisota.protocol.MSG_POS_FUN: self.__read_syscall_pos,
+            bottisota.protocol.MSG_CLK_FUN: self.__read_syscall_clk,
+            bottisota.protocol.MSG_DRV_FUN: self.__read_syscall_drv,
+            bottisota.protocol.MSG_SCN_FUN: self.__read_syscall_scn,
+            bottisota.protocol.MSG_MSL_FUN: self.__read_syscall_msl,
         }
 
         self.__return_syscall_methods = {
-            bottisota.protocol.SYSCALL_POS_FUN: self.__return_syscall_pos,
-            bottisota.protocol.SYSCALL_CLK_FUN: self.__return_syscall_clk,
-            bottisota.protocol.SYSCALL_DRV_FUN: self.__return_syscall_drv,
-            bottisota.protocol.SYSCALL_SCN_FUN: self.__return_syscall_scn,
-            bottisota.protocol.SYSCALL_MSL_FUN: self.__return_syscall_msl,
+            bottisota.protocol.MSG_POS_FUN: self.__return_syscall_pos,
+            bottisota.protocol.MSG_CLK_FUN: self.__return_syscall_clk,
+            bottisota.protocol.MSG_DRV_FUN: self.__return_syscall_drv,
+            bottisota.protocol.MSG_SCN_FUN: self.__return_syscall_scn,
+            bottisota.protocol.MSG_MSL_FUN: self.__return_syscall_msl,
         }
 
     def shutdown(self):

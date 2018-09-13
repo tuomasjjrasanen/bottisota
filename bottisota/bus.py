@@ -70,9 +70,9 @@ class _Connection:
         finally:
             _disconnect(sock)
 
-    def syscall(self, syscall, *args):
-        self.send(syscall, *args)
-        received_syscall, received_values = self.recv()
+    def syscall(self, msg, *args):
+        self.send(msg, *args)
+        received_msg, received_values = self.recv()
         err = received_values[0]
         if err:
             raise SyscallError(err)
@@ -84,21 +84,21 @@ class BotConnection(_Connection):
         _Connection.__init__(self, _connect(), bottisota.protocol.BotStack())
 
     def syscall_clk(self):
-        tick, = self.syscall(bottisota.protocol.SYSCALL_CLK_FUN)
+        tick, = self.syscall(bottisota.protocol.MSG_CLK_FUN)
         return tick
 
     def syscall_drv(self, direction, speed):
-        speed, = self.syscall(bottisota.protocol.SYSCALL_DRV_FUN, direction, speed)
+        speed, = self.syscall(bottisota.protocol.MSG_DRV_FUN, direction, speed)
         return speed
 
     def syscall_pos(self):
-        return self.syscall(bottisota.protocol.SYSCALL_POS_FUN)
+        return self.syscall(bottisota.protocol.MSG_POS_FUN)
 
     def syscall_scn(self, direction, resolution):
-        return self.syscall(bottisota.protocol.SYSCALL_SCN_FUN, direction, resolution)
+        return self.syscall(bottisota.protocol.MSG_SCN_FUN, direction, resolution)
 
     def syscall_msl(self, direction, distance):
-        self.syscall(bottisota.protocol.SYSCALL_MSL_FUN, direction, distance)
+        self.syscall(bottisota.protocol.MSG_MSL_FUN, direction, distance)
 
 class ArenaConnection(_Connection):
 

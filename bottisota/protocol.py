@@ -1,23 +1,23 @@
 import re
 
-SYSCALL_CLK_FUN = "CLK?"
-SYSCALL_CLK_RET = "CLK="
-SYSCALL_DRV_FUN = "DRV?"
-SYSCALL_DRV_RET = "DRV="
-SYSCALL_POS_FUN = "POS?"
-SYSCALL_POS_RET = "POS="
-SYSCALL_SCN_FUN = "SCN?"
-SYSCALL_SCN_RET = "SCN="
-SYSCALL_MSL_FUN = "MSL?"
-SYSCALL_MSL_RET = "MSL="
+MSG_CLK_FUN = "CLK?"
+MSG_CLK_RET = "CLK="
+MSG_DRV_FUN = "DRV?"
+MSG_DRV_RET = "DRV="
+MSG_POS_FUN = "POS?"
+MSG_POS_RET = "POS="
+MSG_SCN_FUN = "SCN?"
+MSG_SCN_RET = "SCN="
+MSG_MSL_FUN = "MSL?"
+MSG_MSL_RET = "MSL="
 
 ERR_OK = 0
 ERR_UNKNOWN = 1
 ERR_BADARG = 2
 ERR_DESTROYED = 3
 
-_CALLER_ARENA = "ARENA"
-_CALLER_BOT = "BOT"
+_PEER_ARENA = "ARENA"
+_PEER_BOT = "BOT"
 
 class Error(Exception):
     pass
@@ -102,56 +102,56 @@ class Parser(object):
 
 class _Stack:
 
-    def __init__(self, send_caller, recv_caller):
+    def __init__(self, sender, receiver):
         lexicon = (
-            (SYSCALL_CLK_FUN, r"^$"),
-            (SYSCALL_CLK_RET, r"^([0-9]+) ([0-9]+)$", int, int),
-            (SYSCALL_DRV_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
-            (SYSCALL_DRV_RET, r"^([0-9]+) ([0-9]+)$", int, int),
-            (SYSCALL_POS_FUN, r"^$"),
-            (SYSCALL_POS_RET, r"^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int, int, int),
-            (SYSCALL_SCN_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
-            (SYSCALL_SCN_RET, r"^([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int),
-            (SYSCALL_MSL_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
-            (SYSCALL_MSL_RET, r"^([0-9]+)$", int),
+            (MSG_CLK_FUN, r"^$"),
+            (MSG_CLK_RET, r"^([0-9]+) ([0-9]+)$", int, int),
+            (MSG_DRV_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
+            (MSG_DRV_RET, r"^([0-9]+) ([0-9]+)$", int, int),
+            (MSG_POS_FUN, r"^$"),
+            (MSG_POS_RET, r"^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int, int, int),
+            (MSG_SCN_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
+            (MSG_SCN_RET, r"^([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int),
+            (MSG_MSL_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
+            (MSG_MSL_RET, r"^([0-9]+)$", int),
         )
 
         grammar = (
-            ("INIT", (_CALLER_BOT, SYSCALL_CLK_FUN), "WAIT"),
-            ("WAIT", (_CALLER_ARENA, SYSCALL_CLK_RET), "OPER"),
-            ("OPER", (_CALLER_BOT, SYSCALL_DRV_FUN), "DRIV"),
-            ("DRIV", (_CALLER_ARENA, SYSCALL_DRV_RET), "OPER"),
-            ("OPER", (_CALLER_BOT, SYSCALL_POS_FUN), "POSI"),
-            ("POSI", (_CALLER_ARENA, SYSCALL_POS_RET), "OPER"),
-            ("OPER", (_CALLER_BOT, SYSCALL_SCN_FUN), "SCAN"),
-            ("SCAN", (_CALLER_ARENA, SYSCALL_SCN_RET), "OPER"),
-            ("OPER", (_CALLER_BOT, SYSCALL_MSL_FUN), "MISS"),
-            ("MISS", (_CALLER_ARENA, SYSCALL_MSL_RET), "OPER"),
-            ("OPER", (_CALLER_BOT, SYSCALL_CLK_FUN), "WAIT"),
+            ("INIT", (_PEER_BOT,   MSG_CLK_FUN), "WAIT"),
+            ("WAIT", (_PEER_ARENA, MSG_CLK_RET), "OPER"),
+            ("OPER", (_PEER_BOT,   MSG_DRV_FUN), "DRIV"),
+            ("DRIV", (_PEER_ARENA, MSG_DRV_RET), "OPER"),
+            ("OPER", (_PEER_BOT,   MSG_POS_FUN), "POSI"),
+            ("POSI", (_PEER_ARENA, MSG_POS_RET), "OPER"),
+            ("OPER", (_PEER_BOT,   MSG_SCN_FUN), "SCAN"),
+            ("SCAN", (_PEER_ARENA, MSG_SCN_RET), "OPER"),
+            ("OPER", (_PEER_BOT,   MSG_MSL_FUN), "MISS"),
+            ("MISS", (_PEER_ARENA, MSG_MSL_RET), "OPER"),
+            ("OPER", (_PEER_BOT,   MSG_CLK_FUN), "WAIT"),
         )
 
         self.__lexer = Lexer(lexicon)
         self.__parser = Parser(grammar)
 
-        self.__send_caller = send_caller
-        self.__recv_caller = recv_caller
+        self.__sender = sender
+        self.__receiver = receiver
 
     def send(self, line):
-        syscall, arguments = self.__lexer.tokenize(line)
-        self.__parser.push((self.__send_caller, syscall))
-        return syscall, arguments
+        msg, arguments = self.__lexer.tokenize(line)
+        self.__parser.push((self.__sender, msg))
+        return msg, arguments
 
     def recv(self, line):
-        syscall, arguments = self.__lexer.tokenize(line)
-        self.__parser.push((self.__recv_caller, syscall))
-        return syscall, arguments
+        msg, arguments = self.__lexer.tokenize(line)
+        self.__parser.push((self.__receiver, msg))
+        return msg, arguments
 
 class BotStack(_Stack):
 
     def __init__(self):
-        _Stack.__init__(self, _CALLER_BOT, _CALLER_ARENA)
+        _Stack.__init__(self, _PEER_BOT, _PEER_ARENA)
 
 class ArenaStack(_Stack):
 
     def __init__(self):
-        _Stack.__init__(self, _CALLER_ARENA, _CALLER_BOT)
+        _Stack.__init__(self, _PEER_ARENA, _PEER_BOT)
