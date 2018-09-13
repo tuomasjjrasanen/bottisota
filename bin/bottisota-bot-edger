@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 import bottisota
-import bottisota.bus
+import bottisota.bot
 
-botconn = bottisota.bus.BotConnection()
+controller = bottisota.bot.Controller()
 
-botconn.syscall_clk()
-botconn.syscall_drv(270, bottisota.DRV_SPEED_MAX)
+controller.botconn.syscall_drv(270, bottisota.DRV_SPEED_MAX)
 while True:
-    x, y, speed, direction = botconn.syscall_pos()
+    x, y, speed, direction = controller.botconn.syscall_pos()
     if speed == 0:
-        botconn.syscall_drv((direction + 90) % 360, bottisota.DRV_SPEED_MAX)
+        controller.botconn.syscall_drv((direction + 90) % 360,
+                                       bottisota.DRV_SPEED_MAX)
