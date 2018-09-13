@@ -1,23 +1,18 @@
 import re
 
-MSG_CLK_FUN = "CLK?"
-MSG_CLK_RET = "CLK="
-MSG_DRV_FUN = "DRV?"
-MSG_DRV_RET = "DRV="
-MSG_POS_FUN = "POS?"
-MSG_POS_RET = "POS="
-MSG_SCN_FUN = "SCN?"
-MSG_SCN_RET = "SCN="
-MSG_MSL_FUN = "MSL?"
-MSG_MSL_RET = "MSL="
+MSG_CLK = "CLK"
+MSG_DRV = "DRV"
+MSG_POS = "POS"
+MSG_SCN = "SCN"
+MSG_MSL = "MSL"
 
 ERR_OK = 0
 ERR_UNKNOWN = 1
 ERR_BADARG = 2
 ERR_DESTROYED = 3
 
-_PEER_ARENA = "ARENA"
-_PEER_BOT = "BOT"
+_TX = '>'
+_RX = '<'
 
 class Error(Exception):
     pass
@@ -50,13 +45,13 @@ class Lexer(object):
     def __init__(self, lexicon):
         self.__lexicon_map = _compile_lexicon(lexicon)
 
-    def tokenize(self, line):
+    def tokenize(self, peer, line):
         keyword, sep, valuestr = line.strip().partition(" ")
         if not keyword:
             raise LexerError("invalid line, keyword is missing: '%s'" % line)
 
         try:
-            pattern, group_types = self.__lexicon_map[keyword]
+            pattern, group_types = self.__lexicon_map[(peer, keyword)]
         except KeyError:
             raise LexerError("unknown keyword: '%s'" % keyword)
 
@@ -102,56 +97,57 @@ class Parser(object):
 
 class _Stack:
 
-    def __init__(self, sender, receiver):
+    def __init__(self, tx, rx):
         lexicon = (
-            (MSG_CLK_FUN, r"^$"),
-            (MSG_CLK_RET, r"^([0-9]+) ([0-9]+)$", int, int),
-            (MSG_DRV_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
-            (MSG_DRV_RET, r"^([0-9]+) ([0-9]+)$", int, int),
-            (MSG_POS_FUN, r"^$"),
-            (MSG_POS_RET, r"^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int, int, int),
-            (MSG_SCN_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
-            (MSG_SCN_RET, r"^([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int),
-            (MSG_MSL_FUN, r"^([0-9]+) ([0-9]+)$", int, int),
-            (MSG_MSL_RET, r"^([0-9]+)$", int),
+            ((_TX, MSG_CLK), r"^$"),
+            ((_RX, MSG_CLK), r"^([0-9]+) ([0-9]+)$", int, int),
+            ((_TX, MSG_DRV), r"^([0-9]+) ([0-9]+)$", int, int),
+            ((_RX, MSG_DRV), r"^([0-9]+) ([0-9]+)$", int, int),
+            ((_TX, MSG_POS), r"^$"),
+            ((_RX, MSG_POS), r"^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int, int, int),
+            ((_TX, MSG_SCN), r"^([0-9]+) ([0-9]+)$", int, int),
+            ((_RX, MSG_SCN), r"^([0-9]+) ([0-9]+) ([0-9]+)$", int, int, int),
+            ((_TX, MSG_MSL), r"^([0-9]+) ([0-9]+)$", int, int),
+            ((_RX, MSG_MSL), r"^([0-9]+)$", int),
         )
 
         grammar = (
-            ("INIT", (_PEER_BOT,   MSG_CLK_FUN), "WAIT"),
-            ("WAIT", (_PEER_ARENA, MSG_CLK_RET), "OPER"),
-            ("OPER", (_PEER_BOT,   MSG_DRV_FUN), "DRIV"),
-            ("DRIV", (_PEER_ARENA, MSG_DRV_RET), "OPER"),
-            ("OPER", (_PEER_BOT,   MSG_POS_FUN), "POSI"),
-            ("POSI", (_PEER_ARENA, MSG_POS_RET), "OPER"),
-            ("OPER", (_PEER_BOT,   MSG_SCN_FUN), "SCAN"),
-            ("SCAN", (_PEER_ARENA, MSG_SCN_RET), "OPER"),
-            ("OPER", (_PEER_BOT,   MSG_MSL_FUN), "MISS"),
-            ("MISS", (_PEER_ARENA, MSG_MSL_RET), "OPER"),
-            ("OPER", (_PEER_BOT,   MSG_CLK_FUN), "WAIT"),
+            ("INIT", (_TX, MSG_CLK), "WAIT"),
+            ("WAIT", (_RX, MSG_CLK), "OPER"),
+            ("OPER", (_TX, MSG_DRV), "DRIV"),
+            ("DRIV", (_RX, MSG_DRV), "OPER"),
+            ("OPER", (_TX, MSG_POS), "POSI"),
+            ("POSI", (_RX, MSG_POS), "OPER"),
+            ("OPER", (_TX, MSG_SCN), "SCAN"),
+            ("SCAN", (_RX, MSG_SCN), "OPER"),
+            ("OPER", (_TX, MSG_MSL), "MISS"),
+            ("MISS", (_RX, MSG_MSL), "OPER"),
+            ("OPER", (_TX, MSG_CLK), "WAIT"),
         )
 
         self.__lexer = Lexer(lexicon)
         self.__parser = Parser(grammar)
 
-        self.__sender = sender
-        self.__receiver = receiver
+        self.__tx = tx
+        self.__rx = rx
+
+    def __comm(self, line, txrx):
+        msg, arguments = self.__lexer.tokenize(txrx, line)
+        self.__parser.push((txrx, msg))
+        return msg, arguments
 
     def send(self, line):
-        msg, arguments = self.__lexer.tokenize(line)
-        self.__parser.push((self.__sender, msg))
-        return msg, arguments
+        return self.__comm(line, self.__tx)
 
     def recv(self, line):
-        msg, arguments = self.__lexer.tokenize(line)
-        self.__parser.push((self.__receiver, msg))
-        return msg, arguments
+        return self.__comm(line, self.__rx)
 
 class BotStack(_Stack):
 
     def __init__(self):
-        _Stack.__init__(self, _PEER_BOT, _PEER_ARENA)
+        _Stack.__init__(self, _TX, _RX)
 
 class ArenaStack(_Stack):
 
     def __init__(self):
-        _Stack.__init__(self, _PEER_ARENA, _PEER_BOT)
+        _Stack.__init__(self, _RX, _TX)

@@ -214,95 +214,41 @@ class Controller:
     def __init__(self, sock):
         self.__conn = bottisota.bus.ArenaConnection(sock)
         self.__syscall = None
-        self.__err = None
         x, y, = bottisota.math.randloc()
         direction = bottisota.math.randdirection()
         self.bot = Bot(x, y, direction)
         self.missiles = []
 
-        self.__read_syscall_methods = {
-            bottisota.protocol.MSG_POS_FUN: self.__read_syscall_pos,
-            bottisota.protocol.MSG_CLK_FUN: self.__read_syscall_clk,
-            bottisota.protocol.MSG_DRV_FUN: self.__read_syscall_drv,
-            bottisota.protocol.MSG_SCN_FUN: self.__read_syscall_scn,
-            bottisota.protocol.MSG_MSL_FUN: self.__read_syscall_msl,
-        }
-
-        self.__return_syscall_methods = {
-            bottisota.protocol.MSG_POS_FUN: self.__return_syscall_pos,
-            bottisota.protocol.MSG_CLK_FUN: self.__return_syscall_clk,
-            bottisota.protocol.MSG_DRV_FUN: self.__return_syscall_drv,
-            bottisota.protocol.MSG_SCN_FUN: self.__return_syscall_scn,
-            bottisota.protocol.MSG_MSL_FUN: self.__return_syscall_msl,
+        self.__syscalls = {
+            bottisota.protocol.MSG_POS: SyscallPOS(self.bot, self.missiles),
+            bottisota.protocol.MSG_CLK: SyscallCLK(self.bot, self.missiles),
+            bottisota.protocol.MSG_DRV: SyscallDRV(self.bot, self.missiles),
+            bottisota.protocol.MSG_SCN: SyscallSCN(self.bot, self.missiles),
+            bottisota.protocol.MSG_MSL: SyscallMSL(self.bot, self.missiles),
         }
 
     def shutdown(self):
         self.__conn.disconnect()
 
-    def __read_syscall_pos(self):
-        self.__err = bottisota.protocol.ERR_OK
-
-    def __read_syscall_clk(self):
-        self.__err = bottisota.protocol.ERR_OK
-
-    def __read_syscall_drv(self):
-        direction, speed = self.__syscall[1]
-        if speed > bottisota.DRV_SPEED_MAX:
-            self.__err = bottisota.protocol.ERR_BADARG
-        else:
-            self.__err = bottisota.protocol.ERR_OK
-            self.bot.drive(speed, direction)
-
-    def __read_syscall_scn(self):
-        direction, resolution = self.__syscall[1]
-        if bottisota.SCN_RESOLUTION_MIN > resolution > bottisota.SCN_RESOLUTION_MAX:
-            self.__err = bottisota.protocol.ERR_BADARG
-        else:
-            self.__err = bottisota.protocol.ERR_OK
-            self.bot.start_scan(direction, resolution)
-
-    def __read_syscall_msl(self):
-        direction, distance = self.__syscall[1]
-        if distance > bottisota.MSL_DISTANCE_MAX:
-            self.__err = bottisota.protocol.ERR_BADARG
-        else:
-            self.__err = bottisota.protocol.ERR_OK
-            missile = self.bot.launch_missile(direction, distance)
-            self.missiles.append(missile)
-
-    def read_syscall(self):
-        self.__syscall = self.__conn.recv(False)
-
-        if not self.__syscall:
+    def enter_syscall(self):
+        try:
+            msg, args = self.__conn.recv(False)
+        except bottisota.bus.NoMessageError:
+            # Nothing to evaluate, no message was received.
             return
 
-        if self.bot.is_destroyed():
-            self.__err = bottisota.protocol.ERR_DESTROYED
-            return
+        self.__syscall = self.__syscalls[msg]
+        self.__syscall.enter(*args)
 
-        self.__err = bottisota.protocol.ERR_UNKNOWN
-        self.__read_syscall_methods[self.__syscall[0]]()
-
-    def __return_syscall_pos(self):
-        return self.bot.x, self.bot.y, self.bot.speed, self.bot.direction
-
-    def __return_syscall_clk(self):
-        return CLOCK.now(),
-
-    def __return_syscall_drv(self):
-        return self.bot.speed,
-
-    def __return_syscall_scn(self):
-        return self.bot.stop_scan()
-
-    def __return_syscall_msl(self):
-        return ()
-
-    def return_syscall(self):
+    def leave_syscall(self):
         if self.__syscall:
-            return_values = self.__return_syscall_methods[self.__syscall[0]]()
-            self.__conn.send(self.__syscall[0].replace("?", "="), self.__err, *return_values)
+            # Ensure the current syscall is reset, no matter what
+            # happens when leaving or sending back the results.
+            syscall = self.__syscall
             self.__syscall = None
+
+            values = syscall.leave()
+            self.__conn.send(syscall.msg, syscall.err, *values)
 
     def log_status(self):
         for missile in self.missiles:
@@ -319,6 +265,105 @@ class Controller:
 
         for destroyed_missile in destroyed_missiles:
             self.missiles.remove(destroyed_missile)
+
+class Syscall:
+
+    msg = None
+
+    def __init__(self, bot, missiles):
+        self.bot = bot
+        self.missiles = missiles
+        self.err = bottisota.protocol.ERR_UNKNOWN
+
+    def enter(self):
+        if self.bot.is_destroyed():
+            self.err = bottisota.protocol.ERR_DESTROYED
+            return False
+
+        self.err = bottisota.protocol.ERR_UNKNOWN
+
+        return True
+
+    def leave(self):
+        return ()
+
+class SyscallMSL(Syscall):
+
+    msg = bottisota.protocol.MSG_MSL
+
+    def enter(self, direction, distance):
+        if not super().enter():
+            return False
+
+        if distance > bottisota.MSL_DISTANCE_MAX:
+            self.err = bottisota.protocol.ERR_BADARG
+            return False
+
+        self.err = bottisota.protocol.ERR_OK
+        missile = self.bot.launch_missile(direction, distance)
+        self.missiles.append(missile)
+
+        return True
+
+class SyscallSCN(Syscall):
+
+    msg = bottisota.protocol.MSG_SCN
+
+    def enter(self, direction, resolution):
+        if not super().enter():
+            return False
+
+        if bottisota.SCN_RESOLUTION_MIN > resolution > bottisota.SCN_RESOLUTION_MAX:
+            self.err = bottisota.protocol.ERR_BADARG
+            return False
+
+        self.err = bottisota.protocol.ERR_OK
+        self.bot.start_scan(direction, resolution)
+
+        return True
+
+    def leave(self):
+        return self.bot.stop_scan()
+
+class SyscallDRV(Syscall):
+
+    msg = bottisota.protocol.MSG_DRV
+
+    def enter(self, direction, speed):
+        if not super().enter():
+            return False
+
+        if speed > bottisota.DRV_SPEED_MAX:
+            self.err = bottisota.protocol.ERR_BADARG
+            return False
+
+        self.err = bottisota.protocol.ERR_OK
+        self.bot.drive(speed, direction)
+
+        return True
+
+    def leave(self):
+        return self.bot.speed,
+
+class SyscallCLK(Syscall):
+
+    msg = bottisota.protocol.MSG_CLK
+
+    def enter(self):
+        self.err = bottisota.protocol.ERR_OK
+
+    def leave(self):
+        return CLOCK.now(),
+
+class SyscallPOS(Syscall):
+
+    msg = bottisota.protocol.MSG_POS
+
+    def enter(self):
+        self.err = bottisota.protocol.ERR_OK
+
+    def leave(self):
+        return self.bot.x, self.bot.y, self.bot.speed, self.bot.direction
 
 class Battle:
 
@@ -343,10 +388,10 @@ class Battle:
         try:
             while len(self.__controllers) == initial_controller_count and self.__is_on:
                 CLOCK.tick()
-                self.__read_syscalls()
+                self.__enter_syscalls()
                 self.__update()
                 self.__log_status()
-                self.__return_syscalls()
+                self.__leave_syscalls()
                 self.__remove_destroyed_things()
 
         finally:
@@ -401,12 +446,12 @@ class Battle:
         for controller in self.__controllers:
             controller.log_status()
 
-    def __read_syscalls(self):
+    def __enter_syscalls(self):
         failed_controllers = []
 
         for controller in self.__controllers:
             try:
-                controller.read_syscall()
+                controller.enter_syscall()
             except:
                 logger.exception("failed to read a syscall from a controller")
                 failed_controllers.append(controller)
@@ -419,9 +464,9 @@ class Battle:
                 logger.exception("failed to shutdown a failed controller")
                 continue
 
-    def __return_syscalls(self):
+    def __leave_syscalls(self):
         for controller in self.__controllers:
-            controller.return_syscall()
+            controller.leave_syscall()
 
 class Arena:
 

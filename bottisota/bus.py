@@ -9,6 +9,9 @@ ADDRESS = "/tmp/bottisota.sock"
 class Error(Exception):
     pass
 
+class NoMessageError(Error):
+    pass
+
 class SyscallError(Error):
 
     def __init__(self, err):
@@ -46,7 +49,7 @@ class _Connection:
             line = self.__sockfile.readline()
 
             if not line:
-                return None
+                raise NoMessageError()
 
             return self.__protocol_stack.recv(line)
         finally:
@@ -84,21 +87,21 @@ class BotConnection(_Connection):
         _Connection.__init__(self, _connect(), bottisota.protocol.BotStack())
 
     def syscall_clk(self):
-        tick, = self.syscall(bottisota.protocol.MSG_CLK_FUN)
+        tick, = self.syscall(bottisota.protocol.MSG_CLK)
         return tick
 
     def syscall_drv(self, direction, speed):
-        speed, = self.syscall(bottisota.protocol.MSG_DRV_FUN, direction, speed)
+        speed, = self.syscall(bottisota.protocol.MSG_DRV, direction, speed)
         return speed
 
     def syscall_pos(self):
-        return self.syscall(bottisota.protocol.MSG_POS_FUN)
+        return self.syscall(bottisota.protocol.MSG_POS)
 
     def syscall_scn(self, direction, resolution):
-        return self.syscall(bottisota.protocol.MSG_SCN_FUN, direction, resolution)
+        return self.syscall(bottisota.protocol.MSG_SCN, direction, resolution)
 
     def syscall_msl(self, direction, distance):
-        self.syscall(bottisota.protocol.MSG_MSL_FUN, direction, distance)
+        self.syscall(bottisota.protocol.MSG_MSL, direction, distance)
 
 class ArenaConnection(_Connection):
 
