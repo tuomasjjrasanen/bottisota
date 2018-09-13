@@ -355,7 +355,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
 
-        self.__arenaProcess = None
+        self.__serverProcess = None
         self.__blueBotProcess = None
         self.__redBotProcess = None
 
@@ -461,33 +461,33 @@ class MainWindow(QMainWindow):
 
         self.__battle_dir = battle_dir
 
-        self.__arenaProcess = QProcess(self)
-        self.__arenaProcess.setStandardErrorFile(os.path.join(self.__battle_dir, "arena.err"))
-        self.__arenaProcess.started.connect(self.__battleBegun)
-        self.__arenaProcess.finished.connect(self.__battleEnded)
-        self.__arenaProcess.readyReadStandardOutput.connect(self.__readBattleLog)
+        self.__serverProcess = QProcess(self)
+        self.__serverProcess.setStandardErrorFile(os.path.join(self.__battle_dir, "server.err"))
+        self.__serverProcess.started.connect(self.__battleBegun)
+        self.__serverProcess.finished.connect(self.__battleEnded)
+        self.__serverProcess.readyReadStandardOutput.connect(self.__readBattleLog)
 
-        self.__arenaProcess.start("bottisota-arena", QIODevice.ReadOnly)
+        self.__serverProcess.start("bottisota-server", QIODevice.ReadOnly)
 
     def __pauseBattle(self):
-        os.kill(self.__arenaProcess.processId(), signal.SIGSTOP)
+        os.kill(self.__serverProcess.processId(), signal.SIGSTOP)
         self.__continueBattleAction.setEnabled(True)
         self.__pauseBattleAction.setEnabled(False)
         self.__endBattleAction.setEnabled(False)
 
     def __continueBattle(self):
-        os.kill(self.__arenaProcess.processId(), signal.SIGCONT)
+        os.kill(self.__serverProcess.processId(), signal.SIGCONT)
         self.__continueBattleAction.setEnabled(False)
         self.__pauseBattleAction.setEnabled(True)
         self.__endBattleAction.setEnabled(True)
 
     def __endBattle(self):
-        self.__arenaProcess.terminate()
+        self.__serverProcess.terminate()
 
     def __battleBegun(self):
         beginDialog = BeginDialog(self)
         if not beginDialog.exec():
-            self.__arenaProcess.terminate()
+            self.__serverProcess.terminate()
             return
 
         self.__blueBotProcess = QProcess(self)
@@ -518,8 +518,8 @@ class MainWindow(QMainWindow):
 
     def __readBattleLog(self):
         try:
-            while self.__arenaProcess.canReadLine():
-                log_entry = self.__arenaProcess.readLine().data().decode("utf-8").strip()
+            while self.__serverProcess.canReadLine():
+                log_entry = self.__serverProcess.readLine().data().decode("utf-8").strip()
 
                 match = re.match(r'^Bot (\d+): x (\d+), y (\d+), health (\d+), direction (\d+), speed (\d+), scan (\d+)±(\d+)$', log_entry)
                 if match:
@@ -642,8 +642,8 @@ class MainWindow(QMainWindow):
             raise
 
     def closeEvent(self, event):
-        if self.__arenaProcess is not None:
-            self.__arenaProcess.close()
+        if self.__serverProcess is not None:
+            self.__serverProcess.close()
 
 def main():
     app = QApplication(sys.argv)

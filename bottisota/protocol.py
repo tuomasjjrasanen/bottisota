@@ -147,7 +147,7 @@ class BotStack(_Stack):
     def __init__(self):
         _Stack.__init__(self, _TX, _RX)
 
-class ArenaStack(_Stack):
+class ServerStack(_Stack):
 
     def __init__(self):
         _Stack.__init__(self, _RX, _TX)

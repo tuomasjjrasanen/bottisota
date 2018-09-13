@@ -212,7 +212,7 @@ class Bot(MovableThing):
 class Controller:
 
     def __init__(self, sock):
-        self.__conn = bottisota.bus.ArenaConnection(sock)
+        self.__conn = bottisota.bus.ServerConnection(sock)
         self.__syscall = None
         x, y, = bottisota.math.randloc()
         direction = bottisota.math.randdirection()
@@ -371,8 +371,8 @@ class Battle:
         self.__controllers = []
         self.__is_on = True
 
-    def wait_for_controller(self, arenasock):
-        controllersock = arenasock.accept()[0]
+    def wait_for_controller(self, serversock):
+        controllersock = serversock.accept()[0]
         logger.info("controller connected")
 
         controller = Controller(controllersock)
@@ -468,7 +468,7 @@ class Battle:
         for controller in self.__controllers:
             controller.leave_syscall()
 
-class Arena:
+class Server:
 
     def __init__(self, address=bottisota.bus.ADDRESS):
         self.__address = address
@@ -530,8 +530,8 @@ class Arena:
         battle.play()
 
 def main():
-    with Arena() as arena:
-        arena.run()
+    with Server() as server:
+        server.run()
 
 if __name__ == "__main__":
     main()

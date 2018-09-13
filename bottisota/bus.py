@@ -103,7 +103,7 @@ class BotConnection(_Connection):
     def syscall_msl(self, direction, distance):
         self.syscall(bottisota.protocol.MSG_MSL, direction, distance)
 
-class ArenaConnection(_Connection):
+class ServerConnection(_Connection):
 
     def __init__(self, sock):
-        _Connection.__init__(self, sock, bottisota.protocol.ArenaStack())
+        _Connection.__init__(self, sock, bottisota.protocol.ServerStack())
