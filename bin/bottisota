@@ -315,7 +315,7 @@ class BeginDialog(QDialog):
         self.__blueBotComboBox = QComboBox()
         self.__redBotComboBox = QComboBox()
 
-        bot_programs = [f for f in os.listdir(os.path.dirname(sys.argv[0])) if f.startswith("bottisota-bot-")]
+        bot_programs = [f for f in os.listdir(os.path.dirname(sys.argv[0])) if f.startswith("bottisota-bot-ai-")]
 
         for bot_program in bot_programs:
             self.__blueBotComboBox.addItem(bot_program)
