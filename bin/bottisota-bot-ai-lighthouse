@@ -6,7 +6,7 @@ import bottisota
 import bottisota.bot
 
 controller = bottisota.bot.Controller()
-controller.move_to(bottisota.CENTER)
+controller.move_to(bottisota.ARENA_CENTER)
 
 scn_direction = 0
 scn_resolution = bottisota.SCN_RESOLUTION_MAX

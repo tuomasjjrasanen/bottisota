@@ -219,7 +219,7 @@ class Missile(MovableThing):
 class Bot(MovableThing):
 
     def __init__(self, x, y, direction):
-        super().__init__(x, y, bottisota.HEALTH_MAX, direction, bottisota.DRV_SPEED_MIN, bottisota.DRV_SPEED_MIN)
+        super().__init__(x, y, bottisota.BOT_HEALTH_MAX, direction, bottisota.DRV_SPEED_MIN, bottisota.DRV_SPEED_MIN)
 
         self.__scn_direction = 0
         self.__scn_resolution = 0

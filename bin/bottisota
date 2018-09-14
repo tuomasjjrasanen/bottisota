@@ -75,7 +75,7 @@ class GraphicsBotItem(QGraphicsPolygonItem):
         self.setBrush(color)
 
     def setHealth(self, health):
-        if health == bottisota.constants.HEALTH_MIN:
+        if health == bottisota.constants.BOT_HEALTH_MIN:
             self.__healthLine.hide()
             self.setBrush(QBrush(Qt.NoBrush))
             if self.__death_explosion_count < 3:
@@ -83,7 +83,7 @@ class GraphicsBotItem(QGraphicsPolygonItem):
                 self.__death_explosion_count += 1
             return
 
-        health_line_length = max(0, round(20 / bottisota.constants.HEALTH_MAX * health))
+        health_line_length = max(0, round(20 / bottisota.constants.BOT_HEALTH_MAX * health))
 
         self.__healthLine.setLine(-6.6, -10, -6.6 + health_line_length, -10)
 
