@@ -20,13 +20,13 @@ class Error(Exception):
 class LexerError(Error):
     pass
 
-class LexiconError(Error):
-    pass
-
-class GrammarError(Error):
-    pass
-
 class ParserError(Error):
+    pass
+
+class _LexiconError(Error):
+    pass
+
+class _GrammarError(Error):
     pass
 
 def _compile_lexicon(lexicon):
@@ -35,12 +35,12 @@ def _compile_lexicon(lexicon):
     for item in lexicon:
         lexeme, regexp = item[:2]
         if lexeme in lexicon_map:
-            raise LexiconError("lexicon has a duplicate lexeme", lexeme)
+            raise _LexiconError("lexicon has a duplicate lexeme", lexeme)
         lexicon_map[lexeme] = (re.compile(regexp), item[2:])
 
     return lexicon_map
 
-class Lexer(object):
+class _Lexer(object):
 
     def __init__(self, lexicon):
         self.__lexicon_map = _compile_lexicon(lexicon)
@@ -72,12 +72,12 @@ def _compile_grammar(grammar):
     for state, symbol, next_state in grammar:
         key = (state, symbol)
         if key in state_transitions:
-            raise GrammarError("grammar has a duplicate rule", key)
+            raise _GrammarError("grammar has a duplicate rule", key)
         state_transitions[key] = next_state
 
     return state_transitions
 
-class Parser(object):
+class _Parser(object):
 
     def __init__(self, grammar):
         self.__initial_state, _, _ = grammar[0]
@@ -125,8 +125,8 @@ class _Stack:
             ("OPER", (_TX, MSG_CLK), "WAIT"),
         )
 
-        self.__lexer = Lexer(lexicon)
-        self.__parser = Parser(grammar)
+        self.__lexer = _Lexer(lexicon)
+        self.__parser = _Parser(grammar)
 
         self.__tx = tx
         self.__rx = rx
