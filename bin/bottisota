@@ -13,7 +13,6 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-import bottisota.bus
 import bottisota.constants
 import bottisota.gui.sprites
 

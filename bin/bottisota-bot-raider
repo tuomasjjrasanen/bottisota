@@ -5,8 +5,9 @@ import logging.handlers
 import sys
 
 import bottisota
-import bottisota.bus
+import bottisota.net
 import bottisota.math
+import bottisota.protocol
 
 logger = logging.getLogger("bottisota")
 logger.setLevel(logging.INFO)
@@ -20,7 +21,8 @@ bot_logger.addHandler(logging.StreamHandler(sys.stdout))
 class BotStateMachine:
 
     def __init__(self):
-        self.botconn = bottisota.bus.BotConnection()
+        self.link = bottisota.net.Link(bottisota.net.connect_socket(),
+                                       bottisota.protocol.BotStack())
 
     @staticmethod
     def state(func):
@@ -70,13 +72,13 @@ class Controller(BotStateMachine):
         self._enemy_loc_tick = None
 
     def _syscall_pos(self):
-        x, y, self._speed, self._direction = self.botconn.syscall_pos()
+        x, y, self._speed, self._direction = self.link.syscall(bottisota.protocol.MSG_POS)
         self._tick += 1
         self._guesstimate_loc()
         self._loc = x, y
 
     def _syscall_drv(self, direction, speed):
-        self.botconn.syscall_drv(direction, speed)
+        self.link.syscall(bottisota.protocol.MSG_DRV, direction, speed)
         self._tick += 1
         self._direction = direction
         self._speed = speed
@@ -87,7 +89,7 @@ class Controller(BotStateMachine):
         self._syscall_drv(bottisota.math.direction(self._loc, center_loc), speed)
 
     def _scan(self):
-        enemy_distance, enemy_idnum = self.botconn.syscall_scn(self._scn_direction, self._scn_resolution)
+        enemy_distance, enemy_idnum = self.link.syscall(bottisota.protocol.MSG_SCN, self._scn_direction, self._scn_resolution)
         self._tick += 1
         self._guesstimate_loc()
 
@@ -120,7 +122,7 @@ class Controller(BotStateMachine):
 
     @BotStateMachine.state
     def sync(self):
-        self._tick = self.botconn.syscall_clk()
+        self._tick, = self.link.syscall(bottisota.protocol.MSG_CLK)
         self._guesstimate_loc()
 
         return ""
@@ -231,7 +233,7 @@ class Controller(BotStateMachine):
         msl_distance = min(bottisota.MSL_DISTANCE_MAX, enemy_distance - 2 * self._enemy_speed)
         msl_direction = bottisota.math.direction(self._loc, self._enemy_loc)
         if msl_distance > 10:
-            self.botconn.syscall_msl(msl_direction, msl_distance)
+            self.link.syscall(bottisota.protocol.MSG_MSL, msl_direction, msl_distance)
             self._tick += 1
             self._guesstimate_loc()
         self._syscall_drv(self._direction, 0)
@@ -242,7 +244,7 @@ class Controller(BotStateMachine):
         enemy_distance = bottisota.math.distance(self._loc, self._enemy_loc)
         msl_distance = min(bottisota.MSL_DISTANCE_MAX, enemy_distance + 2 * self._enemy_speed)
         msl_direction = bottisota.math.direction(self._loc, self._enemy_loc)
-        self.botconn.syscall_msl(msl_direction, msl_distance)
+        self.link.syscall(bottisota.protocol.MSG_MSL, msl_direction, msl_distance)
         self._tick += 1
         self._guesstimate_loc()
         self._syscall_drv(msl_direction, bottisota.DRV_SPEED_MAX)

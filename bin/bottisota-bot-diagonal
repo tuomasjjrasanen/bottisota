@@ -13,7 +13,7 @@ CORNERS = (
 
 controller = bottisota.bot.Controller()
 
-x, y, speed, direction = controller.botconn.syscall_pos()
+x, y, speed, direction = controller.syscall_pos()
 loc = x, y
 
 corner_distances = [bottisota.math.distance(loc, c) for c in CORNERS]
@@ -21,9 +21,9 @@ corner_distances = [bottisota.math.distance(loc, c) for c in CORNERS]
 closest_corner = sorted(zip(CORNERS, corner_distances), key=lambda v: v[1])[0][0]
 
 new_direction = bottisota.math.direction(loc, closest_corner)
-controller.botconn.syscall_drv(new_direction, bottisota.DRV_SPEED_MAX)
+controller.syscall_drv(new_direction, bottisota.DRV_SPEED_MAX)
 while True:
-    x, y, speed, direction = controller.botconn.syscall_pos()
+    x, y, speed, direction = controller.syscall_pos()
     loc = x, y
     if speed == 0:
         if loc != closest_corner:
@@ -31,4 +31,4 @@ while True:
         else:
             diagonal_corner = CORNERS[(CORNERS.index(loc) + 2) % 4]
             new_direction = bottisota.math.direction(loc, diagonal_corner)
-        controller.botconn.syscall_drv(new_direction, bottisota.DRV_SPEED_MAX)
+        controller.syscall_drv(new_direction, bottisota.DRV_SPEED_MAX)

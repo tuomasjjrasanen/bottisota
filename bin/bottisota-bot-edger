@@ -5,9 +5,9 @@ import bottisota.bot
 
 controller = bottisota.bot.Controller()
 
-controller.botconn.syscall_drv(270, bottisota.DRV_SPEED_MAX)
+controller.syscall_drv(270, bottisota.DRV_SPEED_MAX)
 while True:
-    x, y, speed, direction = controller.botconn.syscall_pos()
+    x, y, speed, direction = controller.syscall_pos()
     if speed == 0:
-        controller.botconn.syscall_drv((direction + 90) % 360,
-                                       bottisota.DRV_SPEED_MAX)
+        controller.syscall_drv((direction + 90) % 360,
+                               bottisota.DRV_SPEED_MAX)

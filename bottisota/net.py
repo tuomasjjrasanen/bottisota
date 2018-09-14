@@ -1,10 +1,8 @@
 import socket
 
-import bottisota.protocol
-
 ENCODING = "utf-8"
 
-ADDRESS = "/tmp/bottisota.sock"
+SOCKET_ADDRESS = "/tmp/bottisota.sock"
 
 class Error(Exception):
     pass
@@ -20,7 +18,7 @@ class SyscallError(Error):
     def __str__(self):
         return "Syscall error %d" % self.err
 
-def _connect(address=ADDRESS):
+def connect_socket(address=SOCKET_ADDRESS):
     sock = socket.socket(socket.AF_UNIX)
     try:
         sock.connect(address)
@@ -30,13 +28,13 @@ def _connect(address=ADDRESS):
 
     return sock
 
-def _disconnect(sock):
+def disconnect_socket(sock):
     try:
         sock.shutdown(socket.SHUT_RDWR)
     finally:
         sock.close()
 
-class _Connection:
+class Link:
 
     def __init__(self, sock, protocol_stack):
         self.__sock = sock
@@ -71,7 +69,7 @@ class _Connection:
         try:
             sockfile.close()
         finally:
-            _disconnect(sock)
+            disconnect_socket(sock)
 
     def syscall(self, msg, *args):
         self.send(msg, *args)
@@ -80,30 +78,3 @@ class _Connection:
         if err:
             raise SyscallError(err)
         return received_values[1:]
-
-class BotConnection(_Connection):
-
-    def __init__(self):
-        _Connection.__init__(self, _connect(), bottisota.protocol.BotStack())
-
-    def syscall_clk(self):
-        tick, = self.syscall(bottisota.protocol.MSG_CLK)
-        return tick
-
-    def syscall_drv(self, direction, speed):
-        speed, = self.syscall(bottisota.protocol.MSG_DRV, direction, speed)
-        return speed
-
-    def syscall_pos(self):
-        return self.syscall(bottisota.protocol.MSG_POS)
-
-    def syscall_scn(self, direction, resolution):
-        return self.syscall(bottisota.protocol.MSG_SCN, direction, resolution)
-
-    def syscall_msl(self, direction, distance):
-        self.syscall(bottisota.protocol.MSG_MSL, direction, distance)
-
-class ServerConnection(_Connection):
-
-    def __init__(self, sock):
-        _Connection.__init__(self, sock, bottisota.protocol.ServerStack())

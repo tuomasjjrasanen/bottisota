@@ -13,7 +13,7 @@ import sys
 import time
 
 import bottisota
-import bottisota.bus
+import bottisota.net
 import bottisota.math
 import bottisota.protocol
 
@@ -271,7 +271,7 @@ class Bot(MovableThing):
 class Controller:
 
     def __init__(self, sock):
-        self.__conn = bottisota.bus.ServerConnection(sock)
+        self.__link = bottisota.net.Link(sock, bottisota.protocol.ServerStack())
         self.__syscall = None
         x, y, = bottisota.math.randloc()
         direction = bottisota.math.randdirection()
@@ -287,12 +287,12 @@ class Controller:
         }
 
     def shutdown(self):
-        self.__conn.disconnect()
+        self.__link.disconnect()
 
     def enter_syscall(self):
         try:
-            msg, args = self.__conn.recv(False)
-        except bottisota.bus.NoMessageError:
+            msg, args = self.__link.recv(False)
+        except bottisota.net.NoMessageError:
             # Nothing to evaluate, no message was received.
             return
 
@@ -307,7 +307,7 @@ class Controller:
             self.__syscall = None
 
             values = syscall.leave()
-            self.__conn.send(syscall.msg, syscall.err, *values)
+            self.__link.send(syscall.msg, syscall.err, *values)
 
 class Syscall:
 
@@ -471,7 +471,7 @@ class Battle:
 
 class Server:
 
-    def __init__(self, address=bottisota.bus.ADDRESS):
+    def __init__(self, address=bottisota.net.SOCKET_ADDRESS):
         self.__address = address
         self.__sock = None
         self.__monitor_sock = None
