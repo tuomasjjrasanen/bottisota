@@ -127,11 +127,11 @@ class Thing:
     def add_damage(self, damage):
         self.__health = max(0, self.health - damage)
 
-    def status_line(self):
+    def _status_line(self):
         return "x %d, y %d, health %d" % (self.x, self.y, self.health)
 
     def log_status(self):
-        battle_logger.info("%s %d: %s", self.__class__.__name__, self.idnum, self.status_line())
+        battle_logger.info("%s %d: %s", self.__class__.__name__, self.idnum, self._status_line())
 
 class MovableThing(Thing):
 
@@ -176,8 +176,8 @@ class MovableThing(Thing):
     def move(self):
         self._move_by(self.speed * 1) # Must be called once per tick.
 
-    def status_line(self):
-        return super().status_line() + ", direction %d, speed %d" % (self.direction, self.speed)
+    def _status_line(self):
+        return super()._status_line() + ", direction %d, speed %d" % (self.direction, self.speed)
 
 class Missile(MovableThing):
 
@@ -246,8 +246,8 @@ class Bot(MovableThing):
             self.__scn_distance = random.randint(round(distance_min), round(distance_max))
             self.__scn_idnum = target_bot.idnum
 
-    def status_line(self):
-        return super().status_line() + ", scan %d±%d" % (self.__scn_direction, self.__scn_resolution)
+    def _status_line(self):
+        return super()._status_line() + ", scan %d±%d" % (self.__scn_direction, self.__scn_resolution)
 
     def launch_missile(self, direction, distance):
         WORLD.new_thing(Missile, self.x, self.y, self.speed, direction, distance)
