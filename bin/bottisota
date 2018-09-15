@@ -321,8 +321,8 @@ class BeginDialog(QDialog):
             self.__blueBotComboBox.addItem(bot_program)
             self.__redBotComboBox.addItem(bot_program)
 
-        formLayout.addRow("Blue Bot program", self.__blueBotComboBox)
-        formLayout.addRow("Red Bot program", self.__redBotComboBox)
+        formLayout.addRow("Blue bot AI program", self.__blueBotComboBox)
+        formLayout.addRow("Red bot AI program", self.__redBotComboBox)
 
         layout.addLayout(formLayout)
 
