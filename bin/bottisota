@@ -53,7 +53,8 @@ class ZoomableGraphicsView(QGraphicsView):
 
     def resizeEvent(self, event):
         QGraphicsView.resizeEvent(self, event)
-        self.fitSceneInView()
+        if self.__zoomLevel == 0:
+            self.fitSceneInView()
 
 class GraphicsBotItem(QGraphicsPolygonItem):
 
