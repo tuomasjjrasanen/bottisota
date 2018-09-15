@@ -231,6 +231,8 @@ class ArenaWidget(QWidget):
         self.__arenaGraphicsView = ZoomableGraphicsView(self)
         self.__arenaGraphicsView.setScene(self.__arenaGraphicsScene)
         self.__arenaGraphicsView.setRenderHints(QPainter.Antialiasing)
+        self.__arenaTextItem = self.__arenaGraphicsScene.addText("")
+        self.showText("")
 
         timer.timeout.connect(self.__arenaGraphicsScene.advance)
 
@@ -262,6 +264,12 @@ class ArenaWidget(QWidget):
 
     def removeItem(self, entity):
         self.__arenaGraphicsScene.removeItem(entity)
+
+    def showText(self, text):
+        self.__arenaTextItem.setPlainText(text)
+        x = (self.__arenaGraphicsScene.width() - self.__arenaTextItem.boundingRect().width()) / 2
+        y = (self.__arenaGraphicsScene.height() - self.__arenaTextItem.boundingRect().height()) / 2
+        self.__arenaTextItem.setPos(x, y)
 
 class StatusWidget(QWidget):
 
@@ -473,12 +481,14 @@ class MainWindow(QMainWindow):
         self.__continueBattleAction.setEnabled(True)
         self.__pauseBattleAction.setEnabled(False)
         self.__endBattleAction.setEnabled(False)
+        self.__arenaWidget.showText("PAUSED")
 
     def __continueBattle(self):
         os.kill(self.__serverProcess.processId(), signal.SIGCONT)
         self.__continueBattleAction.setEnabled(False)
         self.__pauseBattleAction.setEnabled(True)
         self.__endBattleAction.setEnabled(True)
+        self.__arenaWidget.showText("")
 
     def __endBattle(self):
         self.__serverProcess.terminate()
