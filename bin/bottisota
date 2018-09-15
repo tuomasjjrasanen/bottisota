@@ -271,6 +271,41 @@ class ArenaWidget(QWidget):
         y = (self.__arenaGraphicsScene.height() - self.__arenaTextItem.boundingRect().height()) / 2
         self.__arenaTextItem.setPos(x, y)
 
+class LogWidget(QWidget):
+
+    LOG_SOURCE_NAMES = (
+        "Battle",
+        "Blue",
+        "Red",
+    )
+
+    LOG_SOURCES = (
+        LOG_SOURCE_BATTLE,
+        LOG_SOURCE_BLUE,
+        LOG_SOURCE_RED,
+    ) = range(len(LOG_SOURCE_NAMES))
+
+    def __init__(self, *args):
+        QWidget.__init__(self, *args)
+
+        self.__logTabWidget = QTabWidget()
+
+        layout = QVBoxLayout(self)
+        for log_source_name in LogWidget.LOG_SOURCE_NAMES:
+            logTextEdit = QTextEdit()
+            logTextEdit.setReadOnly(True)
+            logTextEdit.setFontFamily("monospace")
+            self.__logTabWidget.addTab(logTextEdit, log_source_name)
+
+        layout.addWidget(self.__logTabWidget)
+
+    def addLine(self, log_source, line):
+        self.__logTabWidget.widget(log_source).insertPlainText(line)
+
+    def clear(self):
+        for log_source in LogWidget.LOG_SOURCES:
+            self.__logTabWidget.widget(log_source).clear()
+
 class StatusWidget(QWidget):
 
     def __init__(self, *args):
@@ -377,13 +412,21 @@ class MainWindow(QMainWindow):
         self.__statusWidget = StatusWidget(self)
         self.__statusWidget.setEnabled(False)
 
+        self.__logWidget = LogWidget(self)
+
         self.setCentralWidget(self.__arenaWidget)
 
         self.__statusDockWidget = QDockWidget(self)
         self.__statusDockWidget.setWidget(self.__statusWidget)
         self.__statusDockWidget.setWindowTitle("Status")
         self.__statusDockWidget.setVisible(False)
-        self.addDockWidget(Qt.BottomDockWidgetArea, self.__statusDockWidget)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.__statusDockWidget)
+
+        self.__logDockWidget = QDockWidget(self)
+        self.__logDockWidget.setWidget(self.__logWidget)
+        self.__logDockWidget.setWindowTitle("Log")
+        self.__logDockWidget.setVisible(False)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.__logDockWidget)
 
         self.__beginBattleAction = QAction(self)
         self.__beginBattleAction.setText("&Begin...")
@@ -425,6 +468,7 @@ class MainWindow(QMainWindow):
         fileMenu.addAction(self.__quitAction)
 
         viewMenu = menuBar.addMenu("&View")
+        viewMenu.addAction(self.__logDockWidget.toggleViewAction())
         viewMenu.addAction(self.__statusDockWidget.toggleViewAction())
         viewMenu.addAction(self.__toggleGhostsAction)
 
@@ -467,6 +511,7 @@ class MainWindow(QMainWindow):
             return
 
         self.__battle_dir = battle_dir
+        self.__logWidget.clear()
 
         self.__serverProcess = QProcess(self)
         self.__serverProcess.setStandardErrorFile(os.path.join(self.__battle_dir, "server.err"))
@@ -528,7 +573,10 @@ class MainWindow(QMainWindow):
     def __readBattleLog(self):
         try:
             while self.__serverProcess.canReadLine():
-                log_entry = self.__serverProcess.readLine().data().decode("utf-8").strip()
+                line = self.__serverProcess.readLine().data().decode("utf-8")
+                self.__logWidget.addLine(LogWidget.LOG_SOURCE_BATTLE, line)
+
+                log_entry = line.strip()
 
                 match = re.match(r'^Bot (\d+): x (\d+), y (\d+), health (\d+), direction (\d+), speed (\d+), scan (\d+)±(\d+)$', log_entry)
                 if match:
@@ -576,7 +624,9 @@ class MainWindow(QMainWindow):
     def __readBlueBotLog(self):
         try:
             while self.__blueBotProcess.canReadLine():
-                log_entry = self.__blueBotProcess.readLine().data().decode("utf-8").strip()
+                line = self.__blueBotProcess.readLine().data().decode("utf-8")
+                self.__logWidget.addLine(LogWidget.LOG_SOURCE_BLUE, line)
+                log_entry = line.strip()
 
                 match = re.match(r'^I guess bot (\d+) is at (\d+), (\d+), heading to (\d+) with speed (\d+)$', log_entry)
                 if match:
@@ -615,7 +665,9 @@ class MainWindow(QMainWindow):
     def __readRedBotLog(self):
         try:
             while self.__redBotProcess.canReadLine():
-                log_entry = self.__redBotProcess.readLine().data().decode("utf-8").strip()
+                line = self.__redBotProcess.readLine().data().decode("utf-8")
+                self.__logWidget.addLine(LogWidget.LOG_SOURCE_RED, line)
+                log_entry = line.strip()
 
                 match = re.match(r'^I guess bot (\d+) is at (\d+), (\d+), heading to (\d+) with speed (\d+)$', log_entry)
                 if match:
