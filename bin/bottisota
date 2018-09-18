@@ -2,6 +2,7 @@
 
 import collections
 import datetime
+import functools
 import math
 import os
 import os.path
@@ -15,6 +16,10 @@ from PyQt5.QtWidgets import *
 
 import bottisota.constants
 import bottisota.gui.sprites
+
+BOT_NAMES = ("Blue", "Red")
+BOT_COLORS = (Qt.blue, Qt.red)
+GHOST_COLORS = (QColor(0, 0, 255, 128), QColor(255, 0, 0, 128))
 
 _ANIMATION_TICK_MS = 20
 _WAYPOINTS = (bottisota.constants.TICK_MS - 60) // _ANIMATION_TICK_MS
@@ -58,7 +63,7 @@ class ZoomableGraphicsView(QGraphicsView):
 
 class GraphicsBotItem(QGraphicsPolygonItem):
 
-    def __init__(self, color=Qt.red, parent=None):
+    def __init__(self, color, parent=None):
         polygon = QPolygonF([QPointF(-6.6, -5), QPointF(-6.6, 5), QPointF(-6.6 + 20, 0)])
         QGraphicsPolygonItem.__init__(self, polygon, parent)
 
@@ -132,7 +137,7 @@ class GraphicsBotItem(QGraphicsPolygonItem):
 
 class GraphicsGhostItem(QGraphicsPolygonItem):
 
-    def __init__(self, color=Qt.red, parent=None):
+    def __init__(self, color, parent=None):
         polygon = QPolygonF([QPointF(-6.6, -5), QPointF(-6.6, 5), QPointF(13.4, 0)])
         QGraphicsPolygonItem.__init__(self, polygon, parent)
 
@@ -274,38 +279,31 @@ class ArenaWidget(QWidget):
 
 class LogWidget(QWidget):
 
-    LOG_SOURCE_NAMES = (
-        "Battle",
-        "Blue",
-        "Red",
-    )
-
-    LOG_SOURCES = (
-        LOG_SOURCE_BATTLE,
-        LOG_SOURCE_BLUE,
-        LOG_SOURCE_RED,
-    ) = range(len(LOG_SOURCE_NAMES))
-
     def __init__(self, *args):
         QWidget.__init__(self, *args)
 
         self.__logTabWidget = QTabWidget()
-
+        self.__tabs = {}
         layout = QVBoxLayout(self)
-        for log_source_name in LogWidget.LOG_SOURCE_NAMES:
-            logTextEdit = QTextEdit()
-            logTextEdit.setReadOnly(True)
-            logTextEdit.setFontFamily("monospace")
-            self.__logTabWidget.addTab(logTextEdit, log_source_name)
 
         layout.addWidget(self.__logTabWidget)
 
     def addLine(self, log_source, line):
-        self.__logTabWidget.widget(log_source).insertPlainText(line)
+        try:
+            i = self.__tabs[log_source]
+        except KeyError:
+            logTextEdit = QTextEdit()
+            logTextEdit.setReadOnly(True)
+            logTextEdit.setFontFamily("monospace")
+            self.__logTabWidget.addTab(logTextEdit, log_source)
+            i = self.__logTabWidget.count() - 1
+            self.__tabs[log_source] = i
+
+        self.__logTabWidget.widget(i).insertPlainText(line)
 
     def clear(self):
-        for log_source in LogWidget.LOG_SOURCES:
-            self.__logTabWidget.widget(log_source).clear()
+        for i in range(self.__logTabWidget.count()):
+            self.__logTabWidget.widget(i).clear()
 
 class StatusWidget(QWidget):
 
@@ -356,17 +354,19 @@ class BeginDialog(QDialog):
 
         formLayout = QFormLayout()
 
-        self.__blueBotComboBox = QComboBox()
-        self.__redBotComboBox = QComboBox()
-
         bot_programs = [f for f in os.listdir(os.path.dirname(sys.argv[0])) if f.startswith("bottisota-bot-ai-")]
 
-        for bot_program in bot_programs:
-            self.__blueBotComboBox.addItem(bot_program)
-            self.__redBotComboBox.addItem(bot_program)
+        self.__aiProgramComboBoxes = {}
 
-        formLayout.addRow("Blue bot AI program", self.__blueBotComboBox)
-        formLayout.addRow("Red bot AI program", self.__redBotComboBox)
+        for bot_name in BOT_NAMES:
+            comboBox = QComboBox(self)
+
+            for bot_program in bot_programs:
+                comboBox.addItem(bot_program)
+
+            formLayout.addRow("%s bot AI program" % bot_name, comboBox)
+
+            self.__aiProgramComboBoxes[bot_name] = comboBox
 
         layout.addLayout(formLayout)
 
@@ -385,13 +385,8 @@ class BeginDialog(QDialog):
 
         layout.addLayout(buttonRowLayout)
 
-    @property
-    def blueBotProgram(self):
-        return self.__blueBotComboBox.currentText()
-
-    @property
-    def redBotProgram(self):
-        return self.__redBotComboBox.currentText()
+    def getAIProgram(self, bot_name):
+        return self.__aiProgramComboBoxes[bot_name].currentText()
 
 class MainWindow(QMainWindow):
 
@@ -399,8 +394,8 @@ class MainWindow(QMainWindow):
         QMainWindow.__init__(self)
 
         self.__serverProcess = None
-        self.__blueBotProcess = None
-        self.__redBotProcess = None
+
+        self.__botProcesses = []
 
         self.setWindowTitle("Bottisota")
 
@@ -545,16 +540,14 @@ class MainWindow(QMainWindow):
             self.__serverProcess.terminate()
             return
 
-        self.__blueBotProcess = QProcess(self)
-        self.__blueBotProcess.setStandardErrorFile(os.path.join(self.__battle_dir, "blue.err"))
-        self.__blueBotProcess.setProgram(beginDialog.blueBotProgram)
-        self.__blueBotProcess.readyReadStandardOutput.connect(self.__readBlueBotLog)
-        self.__redBotProcess = QProcess(self)
-        self.__redBotProcess.setStandardErrorFile(os.path.join(self.__battle_dir, "red.err"))
-        self.__redBotProcess.setProgram(beginDialog.redBotProgram)
-        self.__redBotProcess.readyReadStandardOutput.connect(self.__readRedBotLog)
+        for botid, bot_name in enumerate(BOT_NAMES, 1):
+            botProcess = QProcess(self)
+            botProcess.setStandardErrorFile(os.path.join(self.__battle_dir, "%s.err" % bot_name))
+            botProcess.setProgram(beginDialog.getAIProgram(bot_name))
+            botProcess.readyReadStandardOutput.connect(functools.partial(self.__readBotLog, botid))
+            self.__botProcesses.append(botProcess)
 
-        self.__blueBotProcess.start()
+        self.__botProcesses[0].start()
 
         self.__beginBattleAction.setEnabled(False)
         self.__endBattleAction.setEnabled(True)
@@ -575,16 +568,17 @@ class MainWindow(QMainWindow):
         try:
             while self.__serverProcess.canReadLine():
                 line = self.__serverProcess.readLine().data().decode("utf-8")
-                self.__logWidget.addLine(LogWidget.LOG_SOURCE_BATTLE, line)
+                self.__logWidget.addLine("Server", line)
 
                 log_entry = line.strip()
 
                 match = re.match(r'^Bot (\d+): x (\d+), y (\d+), health (\d+), direction (\d+), speed (\d+), scan (\d+)±(\d+)$', log_entry)
                 if match:
                     botid, x, y, health, direction, speed, scan_direction, scan_resolution = [int(v) for v in match.groups()]
-                    bot_name, color = [("Blue", Qt.blue), ("Red", Qt.red)][botid - 1]
+                    bot_name = BOT_NAMES[botid - 1]
+                    color = BOT_COLORS[botid - 1]
                     if not self.__bots:
-                        self.__redBotProcess.start()
+                        self.__botProcesses[botid].start()
                     try:
                         bot = self.__bots[botid]
                     except KeyError:
@@ -622,17 +616,19 @@ class MainWindow(QMainWindow):
             self.close()
             raise
 
-    def __readBlueBotLog(self):
+    def __readBotLog(self, botid):
         try:
-            while self.__blueBotProcess.canReadLine():
-                line = self.__blueBotProcess.readLine().data().decode("utf-8")
-                self.__logWidget.addLine(LogWidget.LOG_SOURCE_BLUE, line)
+            botProcess = self.__botProcesses[botid - 1]
+
+            while botProcess.canReadLine():
+                line = botProcess.readLine().data().decode("utf-8")
+                self.__logWidget.addLine(BOT_NAMES[botid - 1], line)
                 log_entry = line.strip()
 
                 match = re.match(r'^I guess bot (\d+) is at (\d+), (\d+), heading to (\d+) with speed (\d+)$', log_entry)
                 if match:
                     enemy_botid, enemy_x, enemy_y, enemy_direction, enemy_speed = [int(v) for v in match.groups()]
-                    color = [QColor(0, 0, 255, 128), QColor(255, 0, 0, 128)][enemy_botid - 1]
+                    color = GHOST_COLORS[enemy_botid - 1]
                     try:
                         enemy_ghost = self.__ghosts[enemy_botid]
                     except KeyError:
@@ -647,11 +643,11 @@ class MainWindow(QMainWindow):
                 match = re.match(r'^I guess I am at (\d+), (\d+), heading to (\d+)$', log_entry)
                 if match:
                     x, y, heading = [int(v) for v in match.groups()]
-                    color = QColor(0, 0, 255, 128)
+                    color = GHOST_COLORS[botid - 1]
                     try:
-                        ghost = self.__ghosts[1]
+                        ghost = self.__ghosts[botid - 1]
                     except KeyError:
-                        ghost = self.__ghosts[1] = self.__arenaWidget.addGhost(x, y, heading, color)
+                        ghost = self.__ghosts[botid - 1] = self.__arenaWidget.addGhost(x, y, heading, color)
                         ghost.setVisible(self.__toggleGhostsAction.isChecked())
                         ghost.setPen(QPen(Qt.NoPen))
                     else:
@@ -659,46 +655,6 @@ class MainWindow(QMainWindow):
                         ghost.setRotation(heading)
                     continue
 
-        except:
-            self.close()
-            raise
-
-    def __readRedBotLog(self):
-        try:
-            while self.__redBotProcess.canReadLine():
-                line = self.__redBotProcess.readLine().data().decode("utf-8")
-                self.__logWidget.addLine(LogWidget.LOG_SOURCE_RED, line)
-                log_entry = line.strip()
-
-                match = re.match(r'^I guess bot (\d+) is at (\d+), (\d+), heading to (\d+) with speed (\d+)$', log_entry)
-                if match:
-                    enemy_botid, enemy_x, enemy_y, enemy_direction, enemy_speed = [int(v) for v in match.groups()]
-                    color = [QColor(0, 0, 255, 128), QColor(255, 0, 0, 128)][enemy_botid - 1]
-                    try:
-                        enemy_ghost = self.__ghosts[enemy_botid]
-                    except KeyError:
-                        enemy_ghost = self.__ghosts[enemy_botid] = self.__arenaWidget.addGhost(enemy_x, enemy_y, enemy_direction, color)
-                        enemy_ghost.setVisible(self.__toggleGhostsAction.isChecked())
-                        enemy_ghost.setPen(QPen(Qt.NoPen))
-                    else:
-                        enemy_ghost.setPos(enemy_x, enemy_y)
-                        enemy_ghost.setRotation(enemy_direction)
-                    continue
-
-                match = re.match(r'^I guess I am at (\d+), (\d+), heading to (\d+)$', log_entry)
-                if match:
-                    x, y, heading = [int(v) for v in match.groups()]
-                    color = QColor(255, 0, 0, 128)
-                    try:
-                        ghost = self.__ghosts[2]
-                    except KeyError:
-                        ghost = self.__ghosts[2] = self.__arenaWidget.addGhost(x, y, heading, color)
-                        ghost.setVisible(self.__toggleGhostsAction.isChecked())
-                        ghost.setPen(QPen(Qt.NoPen))
-                    else:
-                        ghost.setPos(x, y)
-                        ghost.setRotation(heading)
-                    continue
         except:
             self.close()
             raise
