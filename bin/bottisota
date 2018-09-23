@@ -305,42 +305,6 @@ class LogWidget(QWidget):
         for i in range(self.__logTabWidget.count()):
             self.__logTabWidget.widget(i).clear()
 
-class StatusWidget(QWidget):
-
-    def __init__(self, *args):
-        QWidget.__init__(self, *args)
-
-        layout = QVBoxLayout(self)
-
-        header_labels = ["Bot", "Location", "Speed", "Heading", "Health", "Scanner"]
-
-        self.__botRows = {}
-
-        self.__tableWidget = QTableWidget(0, len(header_labels), self)
-        self.__tableWidget.verticalHeader().setVisible(False)
-
-        self.__tableWidget.setHorizontalHeaderLabels(header_labels)
-
-        layout.addWidget(self.__tableWidget)
-
-    def setStatus(self, bot, x, y, speed, direction, health, scan_direction, scan_resolution):
-        try:
-            row = self.__botRows[bot]
-        except KeyError:
-            row = self.__botRows[bot] = self.__tableWidget.rowCount()
-            self.__tableWidget.insertRow(row)
-
-        self.__tableWidget.setItem(row, 0, QTableWidgetItem(bot))
-        self.__tableWidget.setItem(row, 1, QTableWidgetItem("(%d, %d)" % (x, y)))
-        self.__tableWidget.setItem(row, 2, QTableWidgetItem("%d" % speed))
-        self.__tableWidget.setItem(row, 3, QTableWidgetItem("%d°" % direction))
-        self.__tableWidget.setItem(row, 4, QTableWidgetItem(str(health)))
-        self.__tableWidget.setItem(row, 5, QTableWidgetItem("%d° ± %d°" % (scan_direction, scan_resolution)))
-
-        for i in range(self.__tableWidget.rowCount()):
-            for j in range(self.__tableWidget.columnCount()):
-                self.__tableWidget.item(i, j).setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-
 class BeginDialog(QDialog):
 
     def __init__(self, *args):
@@ -405,18 +369,9 @@ class MainWindow(QMainWindow):
         self.__arenaWidget = ArenaWidget(self.__timer, self)
         self.__arenaWidget.setEnabled(False)
 
-        self.__statusWidget = StatusWidget(self)
-        self.__statusWidget.setEnabled(False)
-
         self.__logWidget = LogWidget(self)
 
         self.setCentralWidget(self.__arenaWidget)
-
-        self.__statusDockWidget = QDockWidget(self)
-        self.__statusDockWidget.setWidget(self.__statusWidget)
-        self.__statusDockWidget.setWindowTitle("Status")
-        self.__statusDockWidget.setVisible(False)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.__statusDockWidget)
 
         self.__logDockWidget = QDockWidget(self)
         self.__logDockWidget.setWidget(self.__logWidget)
@@ -465,7 +420,6 @@ class MainWindow(QMainWindow):
 
         viewMenu = menuBar.addMenu("&View")
         viewMenu.addAction(self.__logDockWidget.toggleViewAction())
-        viewMenu.addAction(self.__statusDockWidget.toggleViewAction())
         viewMenu.addAction(self.__toggleGhostsAction)
 
         battleMenu = menuBar.addMenu("&Battle")
@@ -554,7 +508,6 @@ class MainWindow(QMainWindow):
         self.__pauseBattleAction.setEnabled(True)
         self.__continueBattleAction.setEnabled(False)
         self.__arenaWidget.setEnabled(True)
-        self.__statusWidget.setEnabled(True)
 
     def __battleEnded(self):
         self.__beginBattleAction.setEnabled(True)
@@ -562,7 +515,6 @@ class MainWindow(QMainWindow):
         self.__pauseBattleAction.setEnabled(False)
         self.__continueBattleAction.setEnabled(False)
         self.__arenaWidget.setEnabled(False)
-        self.__statusWidget.setEnabled(False)
 
     def __readBattleLog(self):
         try:
@@ -588,7 +540,6 @@ class MainWindow(QMainWindow):
                         bot.setRotation(direction)
                         bot.setScanBeam(scan_direction, scan_resolution)
                         bot.setHealth(health)
-                        self.__statusWidget.setStatus(bot_name, x, y, speed, direction, health, scan_direction, scan_resolution)
                     continue
 
                 match = re.match(r'^Missile (\d+): x (\d+), y (\d+), health (\d+), direction (\d+), speed (\d+)$', log_entry)
