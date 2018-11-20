@@ -276,14 +276,14 @@ class Controller:
         x, y, = bottisota.math.randloc()
         direction = bottisota.math.randdirection()
 
-        self.bot = WORLD.new_thing(Bot, x, y, direction)
+        bot = WORLD.new_thing(Bot, x, y, direction)
 
         self.__syscalls = {
-            bottisota.protocol.MSG_POS: SyscallPOS(self.bot),
-            bottisota.protocol.MSG_CLK: SyscallCLK(self.bot),
-            bottisota.protocol.MSG_DRV: SyscallDRV(self.bot),
-            bottisota.protocol.MSG_SCN: SyscallSCN(self.bot),
-            bottisota.protocol.MSG_MSL: SyscallMSL(self.bot),
+            bottisota.protocol.MSG_POS: SyscallPOS(bot),
+            bottisota.protocol.MSG_CLK: SyscallCLK(bot),
+            bottisota.protocol.MSG_DRV: SyscallDRV(bot),
+            bottisota.protocol.MSG_SCN: SyscallSCN(bot),
+            bottisota.protocol.MSG_MSL: SyscallMSL(bot),
         }
 
     def shutdown(self):
