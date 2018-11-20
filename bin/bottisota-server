@@ -82,12 +82,12 @@ class World:
 
         self.__log_status()
 
-    def remove_destroyed_missiles(self):
+    def remove_destroyed_things(self):
         destroyed_things = []
 
-        for missile in self.__things.get(Missile, []):
-            if missile.is_destroyed():
-                destroyed_things.append(missile)
+        for thing in self.__iter_things():
+            if thing.is_destroyed():
+                destroyed_things.append(thing)
 
         for destroyed_thing in destroyed_things:
             self.__things[destroyed_thing.__class__].remove(destroyed_thing)
@@ -431,7 +431,7 @@ class Battle:
                 self.__enter_syscalls()
                 WORLD.update()
                 self.__leave_syscalls()
-                WORLD.remove_destroyed_missiles()
+                WORLD.remove_destroyed_things()
 
         finally:
             battle_logger.info("end")
