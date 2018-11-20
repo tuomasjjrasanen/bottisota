@@ -510,6 +510,9 @@ class MainWindow(QMainWindow):
         self.__arenaWidget.setEnabled(True)
 
     def __battleEnded(self):
+        for botProcess in self.__botProcesses:
+            botProcess.terminate()
+        self.__botProcesses.clear()
         self.__beginBattleAction.setEnabled(True)
         self.__endBattleAction.setEnabled(False)
         self.__pauseBattleAction.setEnabled(False)
