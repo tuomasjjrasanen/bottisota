@@ -469,7 +469,7 @@ class MainWindow(QMainWindow):
         self.__serverProcess.finished.connect(self.__battleEnded)
         self.__serverProcess.readyReadStandardOutput.connect(self.__readBattleLog)
 
-        self.__serverProcess.start("bottisota-server", QIODevice.ReadOnly)
+        self.__serverProcess.start(os.path.join(os.path.dirname(sys.argv[0]), "bottisota-server"), QIODevice.ReadOnly)
 
     def __pauseBattle(self):
         os.kill(self.__serverProcess.processId(), signal.SIGSTOP)
