@@ -497,7 +497,7 @@ class MainWindow(QMainWindow):
         for botid, bot_name in enumerate(BOT_NAMES, 1):
             botProcess = QProcess(self)
             botProcess.setStandardErrorFile(os.path.join(self.__battle_dir, "%s.err" % bot_name))
-            botProcess.setProgram(beginDialog.getAIProgram(bot_name))
+            botProcess.setProgram(os.path.join(os.path.dirname(sys.argv[0]), beginDialog.getAIProgram(bot_name)))
             botProcess.readyReadStandardOutput.connect(functools.partial(self.__readBotLog, botid))
             self.__botProcesses.append(botProcess)
 
