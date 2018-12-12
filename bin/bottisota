@@ -284,6 +284,8 @@ class LogWidget(QWidget):
 
         self.__logTabWidget = QTabWidget()
         self.__tabs = {}
+        self.__logdir = None
+        self.__logfiles = {}
         layout = QVBoxLayout(self)
 
         layout.addWidget(self.__logTabWidget)
@@ -301,9 +303,27 @@ class LogWidget(QWidget):
 
         self.__logTabWidget.widget(i).insertPlainText(line)
 
-    def clear(self):
-        for i in range(self.__logTabWidget.count()):
+        try:
+            logfile = self.__logfiles[log_source]
+        except KeyError:
+            logfile = open(os.path.join(self.__logdir, log_source), "w")
+            self.__logfiles[log_source] = logfile
+
+        logfile.write(line)
+        logfile.flush()
+
+    def reset(self, logdir):
+        self.__logdir = logdir
+
+        while self.__logfiles:
+            _, logfile = self.__logfiles.popitem()
+            logfile.close()
+
+        while self.__tabs:
+            _, i = self.__tabs.popitem()
             self.__logTabWidget.widget(i).clear()
+
+        self.__logTabWidget.clear()
 
 class BeginDialog(QDialog):
 
@@ -375,7 +395,7 @@ class MainWindow(QMainWindow):
 
         self.__logDockWidget = QDockWidget(self)
         self.__logDockWidget.setWidget(self.__logWidget)
-        self.__logDockWidget.setWindowTitle("Log")
+        self.__logDockWidget.setWindowTitle("Logs")
         self.__logDockWidget.setVisible(False)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.__logDockWidget)
 
@@ -433,7 +453,6 @@ class MainWindow(QMainWindow):
         self.__bots = {}
         self.__ghosts = {}
         self.__missiles = {}
-        self.__battle_dir = None
 
     def __toggleGhosts(self, visible):
         for ghost in self.__ghosts.values():
@@ -460,14 +479,13 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Failed to begin a battle", "<p>Strange! Tried to create a battle data directory, but it already exists:</p><p><pre>%s</pre></p>" % battle_dir, QMessageBox.Ok)
             return
 
-        self.__battle_dir = battle_dir
-        self.__logWidget.clear()
+        self.__logWidget.reset(battle_dir)
 
         self.__serverProcess = QProcess(self)
-        self.__serverProcess.setStandardErrorFile(os.path.join(self.__battle_dir, "server.err"))
         self.__serverProcess.started.connect(self.__battleBegun)
         self.__serverProcess.finished.connect(self.__battleEnded)
-        self.__serverProcess.readyReadStandardOutput.connect(self.__readBattleLog)
+        self.__serverProcess.readyReadStandardOutput.connect(self.__readServerOut)
+        self.__serverProcess.readyReadStandardError.connect(self.__readServerErr)
 
         self.__serverProcess.start(os.path.join(os.path.dirname(sys.argv[0]), "bottisota-server"), QIODevice.ReadOnly)
 
@@ -496,9 +514,9 @@ class MainWindow(QMainWindow):
 
         for botid, bot_name in enumerate(BOT_NAMES, 1):
             botProcess = QProcess(self)
-            botProcess.setStandardErrorFile(os.path.join(self.__battle_dir, "%s.err" % bot_name))
             botProcess.setProgram(os.path.join(os.path.dirname(sys.argv[0]), beginDialog.getAIProgram(bot_name)))
-            botProcess.readyReadStandardOutput.connect(functools.partial(self.__readBotLog, botid))
+            botProcess.readyReadStandardOutput.connect(functools.partial(self.__readBotOut, botid))
+            botProcess.readyReadStandardError.connect(functools.partial(self.__readBotErr, botid))
             self.__botProcesses.append(botProcess)
 
         self.__botProcesses[0].start()
@@ -519,11 +537,19 @@ class MainWindow(QMainWindow):
         self.__continueBattleAction.setEnabled(False)
         self.__arenaWidget.setEnabled(False)
 
-    def __readBattleLog(self):
+    def __readServerErr(self):
+        try:
+            text = self.__serverProcess.readAllStandardError().data().decode('utf-8')
+            self.__logWidget.addLine("Server.err", text)
+        except:
+            self.close()
+            raise
+
+    def __readServerOut(self):
         try:
             while self.__serverProcess.canReadLine():
                 line = self.__serverProcess.readLine().data().decode("utf-8")
-                self.__logWidget.addLine("Server", line)
+                self.__logWidget.addLine("Server.out", line)
 
                 log_entry = line.strip()
 
@@ -570,13 +596,22 @@ class MainWindow(QMainWindow):
             self.close()
             raise
 
-    def __readBotLog(self, botid):
+    def __readBotErr(self, botid):
+        try:
+            botProcess = self.__botProcesses[botid - 1]
+            text = botProcess.readAllStandardError().data().decode("utf-8")
+            self.__logWidget.addLine("%s.err" % BOT_NAMES[botid - 1], text)
+        except:
+            self.close()
+            raise
+
+    def __readBotOut(self, botid):
         try:
             botProcess = self.__botProcesses[botid - 1]
 
             while botProcess.canReadLine():
                 line = botProcess.readLine().data().decode("utf-8")
-                self.__logWidget.addLine(BOT_NAMES[botid - 1], line)
+                self.__logWidget.addLine("%s.out" % BOT_NAMES[botid - 1], line)
                 log_entry = line.strip()
 
                 match = re.match(r'^I guess bot (\d+) is at (\d+), (\d+), heading to (\d+) with speed (\d+)$', log_entry)
