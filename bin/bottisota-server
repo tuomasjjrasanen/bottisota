@@ -518,6 +518,7 @@ class Server:
     def run(self):
         battle = Battle()
 
+        logger.info("waiting for controllers")
         battle.wait_for_controller(self.__sock)
         battle.wait_for_controller(self.__sock)
 
@@ -531,6 +532,7 @@ class Server:
         battle.play()
 
 def main():
+    logger.info("started")
     with Server() as server:
         server.run()
 
